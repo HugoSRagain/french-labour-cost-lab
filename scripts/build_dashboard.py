@@ -7,7 +7,10 @@ import plotly.io as pio
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-DATA_PATH = BASE_DIR / "data" / "labour_cost_grid.csv"
+
+# Dataset officiel Mon-entreprise
+DATA_PATH = BASE_DIR / "data" / "labour_cost_grid_mon_entreprise.csv"
+
 DOCS_DIR = BASE_DIR / "docs"
 OUTPUT_PATH = DOCS_DIR / "index.html"
 
@@ -70,7 +73,7 @@ def add_relief_zone(fig):
         fillcolor=COLOR_LIGHT_BLUE,
         line_width=0,
         layer="below",
-        annotation_text="Relief phase-out<br>1.0–1.6 SMIC",
+        annotation_text="General relief zone<br>around low wages",
         annotation_position="top left",
         annotation_font_size=12,
         annotation_font_color=COLOR_BLUE
@@ -137,7 +140,7 @@ def make_cost_chart(df):
         )
     )
 
-    fig.update_yaxes(tickprefix="", ticksuffix=" €")
+    fig.update_yaxes(ticksuffix=" €")
     add_relief_zone(fig)
 
     return fig
@@ -153,8 +156,11 @@ def make_employer_rate_chart(df):
             mode="lines",
             name="Employer contribution rate",
             line=dict(color=COLOR_BLUE, width=3),
+            customdata=df[["employer_contributions_monthly_eur", "gross_monthly_eur"]],
             hovertemplate=(
                 "<b>%{x:.2f}× SMIC</b><br>"
+                "Gross wage: %{customdata[1]:,.0f} €<br>"
+                "Employer contributions: %{customdata[0]:,.0f} €<br>"
                 "Employer contribution rate: %{y:.1f}%"
                 "<extra></extra>"
             )
@@ -186,9 +192,12 @@ def make_social_wedge_chart(df):
             line=dict(color=COLOR_TEAL, width=3),
             fill="tozeroy",
             fillcolor="rgba(8, 145, 178, 0.12)",
+            customdata=df[["social_wedge_monthly_eur", "employer_cost_monthly_eur"]],
             hovertemplate=(
                 "<b>%{x:.2f}× SMIC</b><br>"
-                "Social wedge: %{y:.1f}% of employer cost"
+                "Employer cost: %{customdata[1]:,.0f} €<br>"
+                "Social wedge: %{customdata[0]:,.0f} €<br>"
+                "Social wedge rate: %{y:.1f}%"
                 "<extra></extra>"
             )
         )
@@ -217,8 +226,11 @@ def make_cost_to_net_chart(df):
             mode="lines",
             name="Employer cost / net wage",
             line=dict(color=COLOR_RED, width=3),
+            customdata=df[["employer_cost_monthly_eur", "net_monthly_eur"]],
             hovertemplate=(
                 "<b>%{x:.2f}× SMIC</b><br>"
+                "Employer cost: %{customdata[0]:,.0f} €<br>"
+                "Net wage: %{customdata[1]:,.0f} €<br>"
                 "Cost-to-net ratio: %{y:.2f}"
                 "<extra></extra>"
             )
@@ -259,6 +271,20 @@ def build_table(df):
         df["smic_multiple"].isin([1.0, 1.2, 1.6, 2.0, 2.5, 3.0])
     ].copy()
 
+    sample_rows = sample_rows[[
+        "smic_multiple",
+        "gross_monthly_eur",
+        "net_monthly_eur",
+        "employer_cost_monthly_eur",
+        "employee_contributions_monthly_eur",
+        "employer_contributions_monthly_eur",
+        "social_wedge_monthly_eur",
+        "employee_contribution_rate",
+        "employer_contribution_rate",
+        "social_wedge_rate",
+        "cost_to_net_ratio"
+    ]]
+
     sample_rows = sample_rows.rename(columns={
         "smic_multiple": "SMIC multiple",
         "gross_monthly_eur": "Gross wage (€)",
@@ -266,9 +292,9 @@ def build_table(df):
         "employer_cost_monthly_eur": "Employer cost (€)",
         "employee_contributions_monthly_eur": "Employee contrib. (€)",
         "employer_contributions_monthly_eur": "Employer contrib. (€)",
+        "social_wedge_monthly_eur": "Social wedge (€)",
         "employee_contribution_rate": "Employee rate",
         "employer_contribution_rate": "Employer rate",
-        "social_wedge_monthly_eur": "Social wedge (€)",
         "social_wedge_rate": "Social wedge rate",
         "cost_to_net_ratio": "Cost / net ratio"
     })
@@ -304,12 +330,33 @@ def build_table(df):
     )
 
 
+def build_key_metrics(df):
+    point_1 = df.loc[(df["smic_multiple"] - 1.0).abs().idxmin()]
+    point_16 = df.loc[(df["smic_multiple"] - 1.6).abs().idxmin()]
+    point_2 = df.loc[(df["smic_multiple"] - 2.0).abs().idxmin()]
+
+    return {
+        "smic_net": euro(point_1["net_monthly_eur"]),
+        "smic_cost": euro(point_1["employer_cost_monthly_eur"]),
+        "smic_wedge": pct(point_1["social_wedge_rate"] * 100),
+        "smic_employer_rate": pct(point_1["employer_contribution_rate"] * 100),
+
+        "smic_16_employer_rate": pct(point_16["employer_contribution_rate"] * 100),
+        "smic_2_cost_net_ratio": f"{point_2['cost_to_net_ratio']:.2f}"
+    }
+
+
 def main():
     df = pd.read_csv(DATA_PATH)
+
+    # Sécurité : on conserve uniquement les lignes valides.
+    if "status" in df.columns:
+        df = df[df["status"] == "ok"].copy()
 
     updated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     table_html = build_table(df)
+    metrics = build_key_metrics(df)
 
     cost_chart = fig_to_html(make_cost_chart(df))
     employer_rate_chart = fig_to_html(make_employer_rate_chart(df))
@@ -385,6 +432,17 @@ def main():
             line-height: 1.55;
         }}
 
+        .badge {{
+            display: inline-block;
+            background: #dbeafe;
+            color: #1d4ed8;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }}
+
         .method-box {{
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -393,6 +451,33 @@ def main():
             color: #475569;
             font-size: 14px;
             line-height: 1.55;
+        }}
+
+        .metrics-grid {{
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-top: 22px;
+        }}
+
+        .metric-card {{
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 16px;
+        }}
+
+        .metric-label {{
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }}
+
+        .metric-value {{
+            color: #0f172a;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
         }}
 
         .table-wrapper {{
@@ -480,6 +565,16 @@ def main():
             .charts-grid {{
                 grid-template-columns: 1fr;
             }}
+
+            .metrics-grid {{
+                grid-template-columns: 1fr 1fr;
+            }}
+        }}
+
+        @media (max-width: 620px) {{
+            .metrics-grid {{
+                grid-template-columns: 1fr;
+            }}
         }}
     </style>
 </head>
@@ -491,16 +586,40 @@ def main():
 
     <main>
         <section>
+            <div class="badge">Calculation engine: Mon-entreprise / URSSAF API</div>
             <h2>Purpose</h2>
             <p>
                 French Labour Cost Lab provides reproducible simulations of gross wages,
                 net wages, employer costs and social wedges in France.
             </p>
             <div class="method-box">
-                <strong>Methodological note.</strong> This first version relies on stylized assumptions.
-                It is designed to illustrate the structure of labour costs and contribution wedges,
-                not to serve as an official payroll calculator. Future versions will connect the
-                simulation engine to official Mon-entreprise calculations.
+                <strong>Methodological note.</strong> This version uses the Mon-entreprise / URSSAF
+                calculation engine through its public API. Results are computed for a generic wage grid
+                and should be interpreted as a reference case, not as an official payslip calculator.
+                Some institutional parameters may depend on firm size, sector, collective agreement,
+                location, executive status and specific contribution regimes.
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Net wage at 1 SMIC</div>
+                    <div class="metric-value">{metrics["smic_net"]}</div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-label">Employer cost at 1 SMIC</div>
+                    <div class="metric-value">{metrics["smic_cost"]}</div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-label">Social wedge at 1 SMIC</div>
+                    <div class="metric-value">{metrics["smic_wedge"]}</div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-label">Cost/net ratio at 2 SMIC</div>
+                    <div class="metric-value">{metrics["smic_2_cost_net_ratio"]}</div>
+                </div>
             </div>
         </section>
 
@@ -528,7 +647,7 @@ def main():
                 <div class="chart-card">
                     <h3>Effective employer contribution rate</h3>
                     <p class="chart-subtitle">
-                        The shaded zone highlights the phase-out of contribution relief between 1.0 and 1.6 SMIC.
+                        Employer contribution rates are computed from Mon-entreprise outputs as employer contributions divided by gross wage.
                     </p>
                     <div class="plotly-chart">
                         {employer_rate_chart}
