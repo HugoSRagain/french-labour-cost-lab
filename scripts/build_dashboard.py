@@ -1205,6 +1205,28 @@ def build_language_section(df, lang: str, updated_at: str):
                             ⬇ {t["download_csv"]}
                         </a>
                     </div>
+                    <div class="profile-selector profile-selector-grid data-profile-selector">
+                        <div class="selector-field">
+                            <label for="data-status-select-{lang}">{t["status_label"]}</label>
+                            <select id="data-status-select-{lang}" onchange="switchDataCombinatorialProfile('{lang}')">
+                                {status_options}
+                            </select>
+                        </div>
+
+                        <div class="selector-field">
+                            <label for="data-territory-select-{lang}">{t["territory_label"]}</label>
+                            <select id="data-territory-select-{lang}" onchange="switchDataCombinatorialProfile('{lang}')">
+                                {territory_options}
+                            </select>
+                        </div>
+
+                        <div class="selector-field">
+                            <label for="data-atmp-select-{lang}">{t["atmp_label"]}</label>
+                            <select id="data-atmp-select-{lang}" onchange="switchDataCombinatorialProfile('{lang}')">
+                                {atmp_options}
+                            </select>
+                        </div>
+                    </div>
                 </section>
 
                 <div id="data-panels-{lang}">
@@ -1283,12 +1305,21 @@ def main():
             const selectedProfile = restoreCombinatorialSelectors(lang);
             showProfile(lang, selectedProfile);
             showComparison(lang);
+            syncDataSelectorsFromSimulation(lang);
             showDataPanel(lang);
             restoreTab(lang);
         }}
 
         function showDataPanel(lang) {{
-            const profileId = getSelectedCombinatorialProfile(lang);
+            let profileId;
+
+            const dataStatus = document.getElementById("data-status-select-" + lang);
+
+            if (dataStatus) {{
+                profileId = getSelectedDataProfile(lang);
+            }} else {{
+                profileId = getSelectedCombinatorialProfile(lang);
+            }}
 
             const panels = document.querySelectorAll("#data-panels-" + lang + " .data-panel");
             panels.forEach(function(panel) {{
@@ -1317,6 +1348,60 @@ def main():
             return status + "__" + territory + "__" + atmp;
         }}
 
+        function getSelectedDataProfile(lang) {{
+            const status = document.getElementById("data-status-select-" + lang).value;
+            const territory = document.getElementById("data-territory-select-" + lang).value;
+            const atmp = document.getElementById("data-atmp-select-" + lang).value;
+
+            return status + "__" + territory + "__" + atmp;
+        }}
+
+        function syncDataSelectorsFromSimulation(lang) {{
+            const status = document.getElementById("status-select-" + lang).value;
+            const territory = document.getElementById("territory-select-" + lang).value;
+            const atmp = document.getElementById("atmp-select-" + lang).value;
+
+            const dataStatus = document.getElementById("data-status-select-" + lang);
+            const dataTerritory = document.getElementById("data-territory-select-" + lang);
+            const dataAtmp = document.getElementById("data-atmp-select-" + lang);
+
+            if (dataStatus) {{
+                dataStatus.value = status;
+            }}
+
+            if (dataTerritory) {{
+                dataTerritory.value = territory;
+            }}
+
+            if (dataAtmp) {{
+                dataAtmp.value = atmp;
+            }}
+        }}
+
+        function syncSimulationSelectorsFromData(lang) {{
+            const status = document.getElementById("data-status-select-" + lang).value;
+            const territory = document.getElementById("data-territory-select-" + lang).value;
+            const atmp = document.getElementById("data-atmp-select-" + lang).value;
+
+            document.getElementById("status-select-" + lang).value = status;
+            document.getElementById("territory-select-" + lang).value = territory;
+            document.getElementById("atmp-select-" + lang).value = atmp;
+
+            localStorage.setItem("flcl_status_" + lang, status);
+            localStorage.setItem("flcl_territory_" + lang, territory);
+            localStorage.setItem("flcl_atmp_" + lang, atmp);
+        }}
+
+        function switchDataCombinatorialProfile(lang) {{
+            syncSimulationSelectorsFromData(lang);
+
+            const profileId = getSelectedDataProfile(lang);
+
+            showProfile(lang, profileId);
+            showComparison(lang);
+            showDataPanel(lang);
+        }}
+
         function switchCombinatorialProfile(lang) {{
             const profileId = getSelectedCombinatorialProfile(lang);
 
@@ -1325,8 +1410,9 @@ def main():
             localStorage.setItem("flcl_atmp_" + lang, document.getElementById("atmp-select-" + lang).value);
 
             showProfile(lang, profileId);
-	    showComparison(lang);
-	    showDataPanel(lang);
+            showComparison(lang);
+            syncDataSelectorsFromSimulation(lang);
+            showDataPanel(lang);
         }}
 
         function restoreCombinatorialSelectors(lang) {{
