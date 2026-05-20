@@ -656,3 +656,43 @@ footer {
         padding: 10px 12px;
     }
 }
+
+/* Comparison panels */
+
+.comparison-panel {
+    display: none;
+}
+
+.comparison-panel.active {
+    display: block;
+}
+
+.chart-card-full {
+    width: 100%;
+}
+
+/* Data panels */
+
+.data-panel {
+    display: none;
+}
+
+.data-panel.active {
+    display: block;
+}
+
+.table-wrapper-full {
+    max-height: 620px;
+    overflow: auto;
+}
+
+.data-table-full {
+    min-width: 1280px;
+}
+
+.table-wrapper-full .data-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+}

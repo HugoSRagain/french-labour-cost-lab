@@ -35,11 +35,17 @@ TEXT = {
 	"tab_comparisons": "Comparisons",
 	"tab_data": "Data",
 	"tab_methodology": "Methodology",
+	"profile_data_title": "Data for selected profile",
 	"comparisons_title": "Comparisons",
 	"comparisons_intro": "Comparative charts will be added here to compare AT/MP scenarios, employee status and territorial regimes.",
 	"data_title": "Data",
 	"data_intro": "The full simulation dataset can be downloaded as a CSV file. It contains all wage points and all combinations of employee status, territorial regime and AT/MP scenarios.",
 	"status_label": "Employee status",
+	"comparison_atmp_title": "Employer cost by AT/MP scenario",
+	"comparison_atmp_subtitle": (
+   		"For the selected employee status and territorial regime, this chart compares "
+    		"the total employer cost across AT/MP risk scenarios."
+	),
 	"territory_label": "Territorial regime",
 	"download_csv": "Download simulation dataset (CSV)",
 	"atmp_label": "AT/MP risk scenario",
@@ -137,12 +143,18 @@ TEXT = {
 	"tab_comparisons": "Comparaisons",
 	"tab_data": "Données",
 	"tab_methodology": "Méthodologie",
+	"profile_data_title": "Données du profil sélectionné",
 	"comparisons_title": "Comparaisons",
 	"comparisons_intro": "Des graphiques comparatifs seront ajoutés ici pour comparer les scénarios AT/MP, le statut salarié et les régimes territoriaux.",
 	"data_title": "Données",
 	"data_intro": "Le jeu de données complet peut être téléchargé au format CSV. Il contient tous les points de salaire et toutes les combinaisons de statut salarié, régime territorial et scénario AT/MP.",
 	"status_label": "Statut salarié",
 	"territory_label": "Régime territorial",
+	"comparison_atmp_title": "Coût employeur selon le scénario AT/MP",
+	"comparison_atmp_subtitle": (
+    		"Pour le statut salarié et le régime territorial sélectionnés, ce graphique compare "
+    		"le coût total employeur selon les scénarios de risque AT/MP."
+	),
 	"download_csv": "Télécharger les données de simulation (CSV)",
 	"atmp_label": "Scénario AT/MP",
         "purpose_title": "Objectif",
@@ -619,7 +631,89 @@ def make_marginal_chart(df, lang: str):
 
     return fig
 
+def make_atmp_comparison_chart(df_subset, lang: str):
+    t = TEXT[lang]
+    fig = go.Figure()
 
+    atmp_labels = {
+        "standard": "AT/MP standard" if lang == "fr" else "Standard AT/MP",
+        "atmp_1": "AT/MP 1 %",
+        "atmp_4": "AT/MP 4 %",
+        "fonctions_support": "Fonctions support" if lang == "fr" else "Support functions",
+    }
+
+    colors = {
+        "standard": COLOR_BLUE,
+        "atmp_1": COLOR_GREEN,
+        "atmp_4": COLOR_RED,
+        "fonctions_support": COLOR_PURPLE,
+    }
+
+    for atmp_id, label in atmp_labels.items():
+        df_line = df_subset[df_subset["dimension_atmp"] == atmp_id].copy()
+
+        if df_line.empty:
+            continue
+
+        df_line = df_line.sort_values("smic_multiple")
+
+        fig.add_trace(
+            go.Scatter(
+                x=df_line["smic_multiple"],
+                y=df_line["employer_cost_monthly_eur"],
+                mode="lines",
+                name=label,
+                line=dict(color=colors.get(atmp_id, COLOR_BLUE), width=3),
+                customdata=df_line[[
+                    "gross_monthly_eur",
+                    "net_monthly_eur",
+                    "employer_contributions_monthly_eur",
+                    "rgdu_monthly_eur"
+                ]],
+                hovertemplate=(
+                    "<b>%{x:.2f}× SMIC</b><br>"
+                    + f"{t['gross_wage']}: " + "%{customdata[0]:,.0f} €<br>"
+                    + f"{t['net_wage']}: " + "%{customdata[1]:,.0f} €<br>"
+                    + f"{t['employer_cost']}: " + "%{y:,.0f} €<br>"
+                    + f"{t['employer_contrib']}: " + "%{customdata[2]:,.0f} €<br>"
+                    + f"{t['rgdu']}: " + "%{customdata[3]:,.0f} €"
+                    "<extra></extra>"
+                )
+            )
+        )
+
+    fig.update_layout(
+        template="plotly_white",
+        height=470,
+        margin=dict(l=72, r=42, t=32, b=90),
+        font=dict(family="Arial", size=13, color=COLOR_NAVY),
+        hovermode="x unified",
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.22,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12)
+        ),
+        xaxis=dict(
+            title=t["x_axis"],
+            showgrid=False,
+            zeroline=False
+        ),
+        yaxis=dict(
+            title=t["y_monthly_amount"],
+            ticksuffix=" €",
+            showgrid=True,
+            gridcolor="#e5e7eb",
+            zeroline=False
+        )
+    )
+
+    add_rgdu_zone(fig, lang)
+
+    return fig
 def fig_to_html(fig):
     return pio.to_html(
         fig,
@@ -684,6 +778,80 @@ def build_table(df, lang: str):
 
     return sample_rows.to_html(index=False, classes="data-table", border=0, escape=False)
 
+def build_full_data_table(df, lang: str):
+    t = TEXT[lang]
+
+    table = df.copy().sort_values("smic_multiple")
+
+    columns = [
+        "smic_multiple",
+        "gross_monthly_eur",
+        "net_monthly_eur",
+        "employer_cost_monthly_eur",
+        "employee_contributions_monthly_eur",
+        "employer_contributions_monthly_eur",
+        "rgdu_monthly_eur",
+        "social_wedge_monthly_eur",
+        "employee_contribution_rate",
+        "employer_contribution_rate",
+        "rgdu_rate_gross",
+        "social_wedge_rate",
+        "cost_to_net_ratio",
+    ]
+
+    table = table[columns]
+
+    table = table.rename(columns={
+        "smic_multiple": "SMIC",
+        "gross_monthly_eur": f"{t['gross_wage']} (€)",
+        "net_monthly_eur": f"{t['net_wage']} (€)",
+        "employer_cost_monthly_eur": f"{t['employer_cost']} (€)",
+        "employee_contributions_monthly_eur": f"{t['employee_contrib']} (€)",
+        "employer_contributions_monthly_eur": f"{t['employer_contrib']} (€)",
+        "rgdu_monthly_eur": f"{t['rgdu']} (€)",
+        "social_wedge_monthly_eur": f"{t['social_wedge']} (€)",
+        "employee_contribution_rate": t["employee_rate"],
+        "employer_contribution_rate": t["employer_rate"],
+        "rgdu_rate_gross": t["rgdu_rate"],
+        "social_wedge_rate": t["social_wedge_rate"],
+        "cost_to_net_ratio": t["cost_net_ratio"],
+    })
+
+    euro_columns = [
+        f"{t['gross_wage']} (€)",
+        f"{t['net_wage']} (€)",
+        f"{t['employer_cost']} (€)",
+        f"{t['employee_contrib']} (€)",
+        f"{t['employer_contrib']} (€)",
+        f"{t['rgdu']} (€)",
+        f"{t['social_wedge']} (€)",
+    ]
+
+    for col in euro_columns:
+        table[col] = table[col].map(lambda x: euro(float(x)) if pd.notna(x) else "")
+
+    rate_columns = [
+        t["employee_rate"],
+        t["employer_rate"],
+        t["rgdu_rate"],
+        t["social_wedge_rate"],
+    ]
+
+    for col in rate_columns:
+        table[col] = table[col].map(lambda x: pct(float(x) * 100) if pd.notna(x) else "")
+
+    table[t["cost_net_ratio"]] = table[t["cost_net_ratio"]].map(
+        lambda x: f"{float(x):.2f}" if pd.notna(x) else ""
+    )
+
+    table["SMIC"] = table["SMIC"].map(lambda x: f"{float(x):.2f}")
+
+    return table.to_html(
+        index=False,
+        classes="data-table data-table-full",
+        border=0,
+        escape=False
+    )
 
 def build_key_metrics(df):
     point_1 = df.loc[(df["smic_multiple"] - 1.0).abs().idxmin()]
@@ -711,7 +879,7 @@ def build_methodology_list(lang: str):
 def build_profile_panel(df_profile, profile_id, lang: str):
     t = TEXT[lang]
     metrics = build_key_metrics(df_profile)
-    table_html = build_table(df_profile, lang)
+
 
     return f"""
     <div class="profile-panel" id="panel-{lang}-{safe_id(profile_id)}">
@@ -782,13 +950,83 @@ def build_profile_panel(df_profile, profile_id, lang: str):
             </div>
         </section>
 
-        <section>
-            <h2>{t["table_title"]}</h2>
-            <div class="table-wrapper">{table_html}</div>
-        </section>
     </div>
     """
+def build_comparison_panels(df, lang: str):
+    t = TEXT[lang]
 
+    combinations = (
+        df[["dimension_status", "dimension_territory"]]
+        .drop_duplicates()
+        .sort_values(["dimension_status", "dimension_territory"])
+        .to_dict("records")
+    )
+
+    panels = []
+
+    for row in combinations:
+        status = row["dimension_status"]
+        territory = row["dimension_territory"]
+
+        panel_id = f"comparison-{lang}-{status}__{territory}"
+
+        df_subset = df[
+            (df["dimension_status"] == status)
+            & (df["dimension_territory"] == territory)
+        ].copy()
+
+        chart_html = fig_to_html(make_atmp_comparison_chart(df_subset, lang))
+
+        panels.append(f"""
+        <div class="comparison-panel" id="{panel_id}">
+            <section>
+                <h2>{t["comparison_atmp_title"]}</h2>
+                <p class="chart-subtitle">{t["comparison_atmp_subtitle"]}</p>
+                <div class="chart-card chart-card-full">
+                    <div class="plotly-chart">{chart_html}</div>
+                </div>
+            </section>
+        </div>
+        """)
+
+    return "\n".join(panels)
+
+def build_data_panels(df, lang: str):
+    t = TEXT[lang]
+
+    profiles = (
+        df[[
+            "profile_id",
+            "profile_label_fr",
+            "profile_label_en"
+        ]]
+        .drop_duplicates()
+        .sort_values("profile_id")
+        .to_dict("records")
+    )
+
+    panels = []
+
+    for row in profiles:
+        profile_id = row["profile_id"]
+        profile_label = row[f"profile_label_{lang}"]
+
+        df_profile = df[df["profile_id"] == profile_id].copy()
+        table_html = build_full_data_table(df_profile, lang)
+
+        panels.append(f"""
+        <div class="data-panel" id="data-panel-{lang}-{safe_id(profile_id)}">
+            <section>
+                <h2>{t["profile_data_title"]}</h2>
+                <p class="interpretation">{profile_label}</p>
+                <div class="table-wrapper table-wrapper-full">
+                    {table_html}
+                </div>
+            </section>
+        </div>
+        """)
+
+    return "\n".join(panels)
 
 def build_dimension_options(df, dimension_column, label_map, lang):
     values = (
@@ -855,8 +1093,12 @@ def build_language_section(df, lang: str, updated_at: str):
         panels.append(build_profile_panel(df_profile, profile_id, lang))
 
     panels_html = "\n".join(panels)
+    comparison_panels_html = build_comparison_panels(df, lang)
+    data_panels_html = build_data_panels(df, lang)
+    
 
     return f"""
+
     <div class="language-section" id="section-{lang}" data-default-profile="{default_profile}">
         <header>
             <div>
@@ -919,7 +1161,22 @@ def build_language_section(df, lang: str, updated_at: str):
                     <h2>{t["comparisons_title"]}</h2>
                     <p class="interpretation">{t["comparisons_intro"]}</p>
                 </section>
+
+                <div id="comparison-panels-{lang}">
+                    {comparison_panels_html}
+                </div>
             </div>
+
+	    <div class="tab-panel" id="tab-{lang}-comparisons">
+    		<section>
+        	   <h2>{t["comparisons_title"]}</h2>
+        	   <p class="interpretation">{t["comparisons_intro"]}</p>
+    		</section>
+
+    	   	<div id="comparison-panels-{lang}">
+        		{comparison_panels_html}
+    	   	</div>
+	   </div>
 
             <div class="tab-panel" id="tab-{lang}-data">
                 <section>
@@ -949,6 +1206,10 @@ def build_language_section(df, lang: str, updated_at: str):
                         </a>
                     </div>
                 </section>
+
+                <div id="data-panels-{lang}">
+                    {data_panels_html}
+                </div>
             </div>
 
             <div class="tab-panel" id="tab-{lang}-methodology">
@@ -1021,7 +1282,26 @@ def main():
 
             const selectedProfile = restoreCombinatorialSelectors(lang);
             showProfile(lang, selectedProfile);
-	    restoreTab(lang);
+            showComparison(lang);
+            showDataPanel(lang);
+            restoreTab(lang);
+        }}
+
+        function showDataPanel(lang) {{
+            const profileId = getSelectedCombinatorialProfile(lang);
+
+            const panels = document.querySelectorAll("#data-panels-" + lang + " .data-panel");
+            panels.forEach(function(panel) {{
+                panel.classList.remove("active");
+            }});
+
+            const target = document.getElementById("data-panel-" + lang + "-" + safeId(profileId));
+
+            if (target) {{
+                target.classList.add("active");
+            }} else if (panels.length > 0) {{
+                panels[0].classList.add("active");
+            }}
         }}
 
         function switchLanguage() {{
@@ -1045,6 +1325,8 @@ def main():
             localStorage.setItem("flcl_atmp_" + lang, document.getElementById("atmp-select-" + lang).value);
 
             showProfile(lang, profileId);
+	    showComparison(lang);
+	    showDataPanel(lang);
         }}
 
         function restoreCombinatorialSelectors(lang) {{
@@ -1092,6 +1374,37 @@ def main():
             setTimeout(function() {{
                 window.dispatchEvent(new Event("resize"));
             }}, 150);
+        }}
+	
+        function showComparison(lang) {{
+            const statusSelect = document.getElementById("status-select-" + lang);
+            const territorySelect = document.getElementById("territory-select-" + lang);
+
+            if (!statusSelect || !territorySelect) {{
+                return;
+            }}
+
+            const status = statusSelect.value;
+            const territory = territorySelect.value;
+
+            const panels = document.querySelectorAll("#comparison-panels-" + lang + " .comparison-panel");
+
+            panels.forEach(function(panel) {{
+                panel.classList.remove("active");
+            }});
+
+            const comparisonId = "comparison-" + lang + "-" + status + "__" + territory;
+            const target = document.getElementById(comparisonId);
+
+            if (target) {{
+                target.classList.add("active");
+            }} else if (panels.length > 0) {{
+                panels[0].classList.add("active");
+            }}
+
+            setTimeout(function() {{
+                window.dispatchEvent(new Event("resize"));
+            }}, 200);
         }}
 
         function updatePlotlyTheme(theme) {{
@@ -1225,6 +1538,10 @@ def main():
 
         const savedLanguage = localStorage.getItem("flcl_language") || "en";
         setLanguage(savedLanguage);
+
+        setTimeout(function() {{
+            showComparison(savedLanguage);
+        }}, 300);
     </script>
 </body>
 </html>
