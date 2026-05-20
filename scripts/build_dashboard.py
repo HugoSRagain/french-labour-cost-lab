@@ -1913,7 +1913,7 @@ def main():
     french_section = build_language_section(df, "fr", updated_at)
 
     html = f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <title>French Labour Cost Lab</title>
@@ -2361,7 +2361,7 @@ def main():
         const savedTheme = localStorage.getItem("flcl_theme") || "light";
         applyTheme(savedTheme);
 
-        const savedLanguage = localStorage.getItem("flcl_language") || "en";
+        const savedLanguage = localStorage.getItem("flcl_language") || "fr";
         setLanguage(savedLanguage);
 
         setTimeout(function() {{
