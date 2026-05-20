@@ -1,28 +1,50 @@
-profiles:
-  non_cadre_standard:
-    label_fr: "Non-cadre standard"
-    label_en: "Standard non-executive employee"
-    situation:
-      salarié . contrat . statut cadre: "non"
-      salarié . régimes spécifiques . alsace moselle: "non"
+dimensions:
+  status:
+    non_cadre:
+      label_fr: "Non-cadre"
+      label_en: "Non-executive"
+      situation:
+        salarié . contrat . statut cadre: "non"
 
-  cadre_standard:
-    label_fr: "Cadre standard"
-    label_en: "Standard executive employee"
-    situation:
-      salarié . contrat . statut cadre: "oui"
-      salarié . régimes spécifiques . alsace moselle: "non"
+    cadre:
+      label_fr: "Cadre"
+      label_en: "Executive"
+      situation:
+        salarié . contrat . statut cadre: "oui"
 
-  non_cadre_alsace_moselle:
-    label_fr: "Non-cadre Alsace-Moselle"
-    label_en: "Non-executive employee, Alsace-Moselle"
-    situation:
-      salarié . contrat . statut cadre: "non"
-      salarié . régimes spécifiques . alsace moselle: "oui"
+  territory:
+    standard:
+      label_fr: "Hors Alsace-Moselle"
+      label_en: "Outside Alsace-Moselle"
+      situation:
+        salarié . régimes spécifiques . alsace moselle: "non"
 
-  cadre_alsace_moselle:
-    label_fr: "Cadre Alsace-Moselle"
-    label_en: "Executive employee, Alsace-Moselle"
-    situation:
-      salarié . contrat . statut cadre: "oui"
-      salarié . régimes spécifiques . alsace moselle: "oui"
+    alsace_moselle:
+      label_fr: "Alsace-Moselle"
+      label_en: "Alsace-Moselle"
+      situation:
+        salarié . régimes spécifiques . alsace moselle: "oui"
+
+  atmp:
+    standard:
+      label_fr: "AT/MP standard"
+      label_en: "Standard AT/MP"
+      situation: {}
+
+    atmp_1:
+      label_fr: "AT/MP 1 %"
+      label_en: "AT/MP 1%"
+      situation:
+        établissement . taux ATMP: 1
+
+    atmp_4:
+      label_fr: "AT/MP 4 %"
+      label_en: "AT/MP 4%"
+      situation:
+        établissement . taux ATMP: 4
+
+    fonctions_support:
+      label_fr: "Fonctions support"
+      label_en: "Support functions"
+      situation:
+        salarié . cotisations . ATMP . taux fonctions support: "oui"

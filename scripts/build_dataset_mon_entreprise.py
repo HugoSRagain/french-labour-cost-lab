@@ -41,6 +41,16 @@ def load_config():
     return load_yaml(CONFIG_PATH)
 
 
+def merge_situations(*situations):
+    merged = {}
+
+    for situation in situations:
+        if situation:
+            merged.update(situation)
+
+    return merged
+
+
 def load_profiles():
     if not PROFILES_PATH.exists():
         raise FileNotFoundError(
@@ -49,11 +59,62 @@ def load_profiles():
 
     profiles_config = load_yaml(PROFILES_PATH)
 
-    if "profiles" not in profiles_config:
-        raise ValueError("profiles.yml must contain a top-level 'profiles' key.")
+    # Ancienne structure : profiles:
+    # On la garde compatible au cas où.
+    if "profiles" in profiles_config:
+        return profiles_config["profiles"]
 
-    return profiles_config["profiles"]
+    # Nouvelle structure combinatoire : dimensions:
+    if "dimensions" not in profiles_config:
+        raise ValueError(
+            "profiles.yml must contain either a top-level 'profiles' key "
+            "or a top-level 'dimensions' key."
+        )
 
+    dimensions = profiles_config["dimensions"]
+
+    required_dimensions = ["status", "territory", "atmp"]
+
+    for dimension in required_dimensions:
+        if dimension not in dimensions:
+            raise ValueError(f"Missing dimension in profiles.yml: {dimension}")
+
+    generated_profiles = {}
+
+    for status_id, status in dimensions["status"].items():
+        for territory_id, territory in dimensions["territory"].items():
+            for atmp_id, atmp in dimensions["atmp"].items():
+
+                profile_id = f"{status_id}__{territory_id}__{atmp_id}"
+
+                label_fr = (
+                    f"{status.get('label_fr', status_id)} · "
+                    f"{territory.get('label_fr', territory_id)} · "
+                    f"{atmp.get('label_fr', atmp_id)}"
+                )
+
+                label_en = (
+                    f"{status.get('label_en', status_id)} · "
+                    f"{territory.get('label_en', territory_id)} · "
+                    f"{atmp.get('label_en', atmp_id)}"
+                )
+
+                situation = merge_situations(
+                    status.get("situation", {}),
+                    territory.get("situation", {}),
+                    atmp.get("situation", {})
+                )
+
+                generated_profiles[profile_id] = {
+                    "label_fr": label_fr,
+                    "label_en": label_en,
+                    "dimension_status": status_id,
+                    "dimension_territory": territory_id,
+                    "dimension_atmp": atmp_id,
+                    "situation": situation
+                }
+
+    return generated_profiles
 
 def build_smic_grid():
     config = load_config()
@@ -286,6 +347,9 @@ def make_success_row(
         "profile_id": profile_id,
         "profile_label_fr": profile.get("label_fr", profile_id),
         "profile_label_en": profile.get("label_en", profile_id),
+	"dimension_status": profile.get("dimension_status", ""),
+	"dimension_territory": profile.get("dimension_territory", ""),
+	"dimension_atmp": profile.get("dimension_atmp", ""),
         "rgdu_expression_used": rgdu_expression or "",
         "smic_multiple": multiple,
 
