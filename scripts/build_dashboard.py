@@ -88,17 +88,17 @@ TEXT = {
             "Mon-entreprise / URSSAF API. The objective is not to reproduce a full payslip, "
             "but to isolate economically meaningful indicators of labour cost formation."
         ),
-        "methodology_points": [
-    		"<strong>Source.</strong> Les calculs sont obtenus à partir de l’API publique Mon-entreprise / URSSAF.",
-    		"<strong>Grille salariale.</strong> Les salaires bruts mensuels sont exprimés en multiples du SMIC brut mensuel, de 0,8 à 3,5 SMIC, avec un pas de 0,01 SMIC.",
-    		"<strong>Simulation combinatoire.</strong> L’utilisateur peut combiner trois dimensions : statut salarié, régime territorial et scénario de risque AT/MP.",
-    		"<strong>Statut salarié.</strong> La dimension de statut distingue les salariés non-cadres et cadres.",
-    		"<strong>Régime territorial.</strong> La dimension territoriale distingue le régime général du régime Alsace-Moselle.",
-    		"<strong>Scénarios AT/MP.</strong> La dimension AT/MP doit être interprétée comme un scénario de taux de risque, et non comme une profession ou un secteur précis. Les taux explicites, par exemple 1 % ou 4 %, sont directement transmis au moteur Mon-		entreprise. Le scénario fonctions support repose sur une règle signalée comme expérimentale par l’API.",
-    		"<strong>Indicateurs.</strong> Coût employeur, salaire net, cotisations employeur, cotisations salarié, RGDU 2026, coin social et ratio coût/net sont dérivés des sorties de l’API.",
-    		"<strong>Taux effectif de cotisations employeur.</strong> Le taux affiché dans le graphique ne correspond pas au barème légal brut de cotisations patronales. Il s’agit d’un taux apparent après allègements de charges, calculé comme cotisations employeur 		nettes rapportées au salaire brut.",
-    		"<strong>Indicateurs marginaux.</strong> Le taux marginal de coût employeur est calculé par différence finie entre deux points adjacents de la grille : Δ coût employeur / Δ salaire brut.",
-    		"<strong>Limites.</strong> Les résultats sont des simulations de référence, non des calculs officiels de fiche de paie. Ils peuvent varier selon la taille de l’entreprise, les conventions collectives, la classification AT/MP précise, les exonérations et 		les régimes spécifiques."
+	"methodology_points": [
+    		"<strong>Source.</strong> Calculations are obtained from the public Mon-entreprise / URSSAF API.",
+    		"<strong>Wage grid.</strong> Gross monthly wages are expressed as multiples of the gross monthly SMIC, from 0.8 to 3.5 SMIC, with a 0.01 SMIC step.",
+    		"<strong>Combinatorial simulation.</strong> Users can combine three dimensions: employee status, territorial regime and AT/MP risk scenario.",
+    		"<strong>Employee status.</strong> The status dimension distinguishes non-executive and executive employees.",
+    		"<strong>Territorial regime.</strong> The territorial dimension distinguishes the general regime from the Alsace-Moselle regime.",
+    		"<strong>AT/MP scenarios.</strong> The AT/MP dimension should be interpreted as a risk-rate scenario, not as a precise occupation or sector. Explicit rates, such as 1% or 4%, are directly passed to the Mon-entreprise engine. The support-functions scenario relies on a rule flagged as experimental by the API.",
+    		"<strong>Indicators.</strong> Employer cost, net wage, employer contributions, employee contributions, RGDU 2026, social wedge and cost-to-net ratios are derived from API outputs.",
+    		"<strong>Effective employer contribution rate.</strong> The rate shown in the chart is not the gross statutory employer contribution schedule. It is an apparent rate after employer contribution reliefs, computed as net employer contributions divided by gross wage.",
+    		"<strong>Marginal indicators.</strong> The marginal employer-cost rate is computed as the finite difference between two adjacent points of the wage grid: Δ employer cost / Δ gross wage.",
+    		"<strong>Limitations.</strong> Results are reference simulations, not official payslip calculations. They may vary depending on firm size, collective agreements, precise AT/MP classification, exemptions and specific contribution regimes."
 	],
         "metric_net_smic": "Net wage at 1 SMIC",
         "metric_cost_smic": "Employer cost at 1 SMIC",
