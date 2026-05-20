@@ -698,4 +698,27 @@ footer {
 .data-profile-selector {
     margin-top: 18px;
 }
+.comparison-panel {
+    display: none;
+}
+
+.comparison-panel.active {
+    display: block;
+}
+#comparison-panels-fr .chart-card,
+#comparison-panels-en .chart-card {
+    min-width: 0;
+}
+/* Comparison panels */
+
+.comparison-panel,
+.status-comparison-panel {
+    display: none;
+}
+
+.comparison-panel.active,
+.status-comparison-panel.active {
+    display: block;
+}
+
 }

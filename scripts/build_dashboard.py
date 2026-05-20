@@ -41,6 +41,17 @@ TEXT = {
 	"data_title": "Data",
 	"data_intro": "The full simulation dataset can be downloaded as a CSV file. It contains all wage points and all combinations of employee status, territorial regime and AT/MP scenarios.",
 	"status_label": "Employee status",
+	"comparison_status_title": "Employer cost by employee status",
+	"comparison_status_subtitle": (
+    		"For the selected territorial regime and AT/MP scenario, this chart compares "
+    		"total employer cost between non-executive and executive employees."
+	),
+	"comparison_status_gap_title": "Employer cost gap: executive minus non-executive",
+	"comparison_status_gap_subtitle": (
+    		"This chart shows the monthly employer-cost difference between executive and "
+    		"non-executive employees."
+	),
+	"executive_gap": "Executive cost gap",
 	"comparison_atmp_title": "Employer cost by AT/MP scenario",
 	"comparison_atmp_subtitle": (
    		"For the selected employee status and territorial regime, this chart compares "
@@ -49,6 +60,17 @@ TEXT = {
 	"territory_label": "Territorial regime",
 	"download_csv": "Download simulation dataset (CSV)",
 	"atmp_label": "AT/MP risk scenario",
+	"comparison_atmp_title": "Employer cost by AT/MP scenario",
+	"comparison_atmp_subtitle": (
+    		"For the selected employee status and territorial regime, this chart compares "
+    		"total employer cost across AT/MP risk scenarios."
+	),
+	"comparison_atmp_gap_title": "Employer cost gap relative to standard AT/MP",
+	"comparison_atmp_gap_subtitle": (
+   		 "This chart shows the monthly employer-cost difference relative to the standard "
+    		"AT/MP scenario."
+	),
+"employer_cost_gap": "Employer cost gap",
         "purpose_title": "Purpose",
         "purpose_text": (
             "French Labour Cost Lab provides reproducible simulations of gross wages, net wages, "
@@ -149,7 +171,29 @@ TEXT = {
 	"data_title": "Données",
 	"data_intro": "Le jeu de données complet peut être téléchargé au format CSV. Il contient tous les points de salaire et toutes les combinaisons de statut salarié, régime territorial et scénario AT/MP.",
 	"status_label": "Statut salarié",
+	"comparison_status_title": "Coût employeur selon le statut salarié",
+	"comparison_status_subtitle": (
+    		"Pour le régime territorial et le scénario AT/MP sélectionnés, ce graphique compare "
+    		"le coût total employeur entre salariés non-cadres et cadres."
+	),
+	"comparison_status_gap_title": "Écart de coût employeur : cadre moins non-cadre",
+	"comparison_status_gap_subtitle": (
+    		"Ce graphique montre l’écart mensuel de coût employeur entre salarié cadre et "
+    		"salarié non-cadre."
+	),
+	"executive_gap": "Écart cadre - non-cadre",
 	"territory_label": "Régime territorial",
+	"comparison_atmp_title": "Coût employeur selon le scénario AT/MP",
+	"comparison_atmp_subtitle": (
+    		"Pour le statut salarié et le régime territorial sélectionnés, ce graphique compare "
+    		"le coût total employeur selon les scénarios de risque AT/MP."
+	),
+	"comparison_atmp_gap_title": "Écart de coût employeur par rapport au scénario AT/MP standard",
+	"comparison_atmp_gap_subtitle": (
+    		"Ce graphique montre l’écart mensuel de coût employeur par rapport au scénario "
+    		"AT/MP standard."
+	),
+	"employer_cost_gap": "Écart de coût employeur",
 	"comparison_atmp_title": "Coût employeur selon le scénario AT/MP",
 	"comparison_atmp_subtitle": (
     		"Pour le statut salarié et le régime territorial sélectionnés, ce graphique compare "
@@ -672,20 +716,25 @@ def make_atmp_comparison_chart(df_subset, lang: str):
                 ]],
                 hovertemplate=(
                     "<b>%{x:.2f}× SMIC</b><br>"
-                    + f"{t['gross_wage']}: " + "%{customdata[0]:,.0f} €<br>"
-                    + f"{t['net_wage']}: " + "%{customdata[1]:,.0f} €<br>"
-                    + f"{t['employer_cost']}: " + "%{y:,.0f} €<br>"
-                    + f"{t['employer_contrib']}: " + "%{customdata[2]:,.0f} €<br>"
-                    + f"{t['rgdu']}: " + "%{customdata[3]:,.0f} €"
-                    "<extra></extra>"
+                    + f"{t['gross_wage']}: "
+                    + "%{customdata[0]:,.0f} €<br>"
+                    + f"{t['net_wage']}: "
+                    + "%{customdata[1]:,.0f} €<br>"
+                    + f"{t['employer_cost']}: "
+                    + "%{y:,.0f} €<br>"
+                    + f"{t['employer_contrib']}: "
+                    + "%{customdata[2]:,.0f} €<br>"
+                    + f"{t['rgdu']}: "
+                    + "%{customdata[3]:,.0f} €"
+                    + "<extra></extra>"
                 )
             )
         )
 
     fig.update_layout(
         template="plotly_white",
-        height=470,
-        margin=dict(l=72, r=42, t=32, b=90),
+        height=440,
+        margin=dict(l=70, r=35, t=30, b=85),
         font=dict(family="Arial", size=13, color=COLOR_NAVY),
         hovermode="x unified",
         showlegend=True,
@@ -714,6 +763,296 @@ def make_atmp_comparison_chart(df_subset, lang: str):
     add_rgdu_zone(fig, lang)
 
     return fig
+
+def make_atmp_gap_chart(df_subset, lang: str):
+    t = TEXT[lang]
+    fig = go.Figure()
+
+    atmp_labels = {
+        "atmp_1": "AT/MP 1 %",
+        "atmp_4": "AT/MP 4 %",
+        "fonctions_support": "Fonctions support" if lang == "fr" else "Support functions",
+    }
+
+    colors = {
+        "atmp_1": COLOR_GREEN,
+        "atmp_4": COLOR_RED,
+        "fonctions_support": COLOR_PURPLE,
+    }
+
+    df_standard = df_subset[df_subset["dimension_atmp"] == "standard"].copy()
+
+    if df_standard.empty:
+        fig.update_layout(
+            template="plotly_white",
+            height=440,
+            margin=dict(l=70, r=35, t=30, b=85),
+            font=dict(family="Arial", size=13, color=COLOR_NAVY),
+            xaxis=dict(title=t["x_axis"]),
+            yaxis=dict(title=t["employer_cost_gap"])
+        )
+        return fig
+
+    df_standard = df_standard.sort_values("smic_multiple")
+    standard_map = (
+        df_standard.set_index("smic_multiple")["employer_cost_monthly_eur"].to_dict()
+    )
+
+    for atmp_id, label in atmp_labels.items():
+        df_line = df_subset[df_subset["dimension_atmp"] == atmp_id].copy()
+
+        if df_line.empty:
+            continue
+
+        df_line = df_line.sort_values("smic_multiple").copy()
+        df_line["standard_employer_cost"] = df_line["smic_multiple"].map(standard_map)
+        df_line["gap_eur"] = (
+            df_line["employer_cost_monthly_eur"] - df_line["standard_employer_cost"]
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=df_line["smic_multiple"],
+                y=df_line["gap_eur"],
+                mode="lines",
+                name=label,
+                line=dict(color=colors.get(atmp_id, COLOR_BLUE), width=3),
+                customdata=df_line[[
+                    "gross_monthly_eur",
+                    "employer_cost_monthly_eur",
+                    "standard_employer_cost",
+                    "gap_eur"
+                ]],
+                hovertemplate=(
+                    "<b>%{x:.2f}× SMIC</b><br>"
+                    + f"{t['gross_wage']}: "
+                    + "%{customdata[0]:,.0f} €<br>"
+                    + f"{t['employer_cost']}: "
+                    + "%{customdata[1]:,.0f} €<br>"
+                    + ("Standard AT/MP: " if lang == "en" else "AT/MP standard : ")
+                    + "%{customdata[2]:,.0f} €<br>"
+                    + f"{t['employer_cost_gap']}: "
+                    + "%{customdata[3]:,.0f} €"
+                    + "<extra></extra>"
+                )
+            )
+        )
+
+    fig.add_hline(
+        y=0,
+        line_width=1.5,
+        line_dash="dash",
+        line_color="#6b7280"
+    )
+
+    fig.update_layout(
+        template="plotly_white",
+        height=440,
+        margin=dict(l=70, r=35, t=30, b=85),
+        font=dict(family="Arial", size=13, color=COLOR_NAVY),
+        hovermode="x unified",
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.22,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12)
+        ),
+        xaxis=dict(
+            title=t["x_axis"],
+            showgrid=False,
+            zeroline=False
+        ),
+        yaxis=dict(
+            title=t["employer_cost_gap"],
+            ticksuffix=" €",
+            showgrid=True,
+            gridcolor="#e5e7eb",
+            zeroline=False
+        )
+    )
+
+    add_rgdu_zone(fig, lang)
+
+    return fig
+
+def make_status_comparison_chart(df_subset, lang: str):
+    t = TEXT[lang]
+    fig = go.Figure()
+
+    status_labels = {
+        "non_cadre": "Non-cadre" if lang == "fr" else "Non-executive",
+        "cadre": "Cadre" if lang == "fr" else "Executive",
+    }
+
+    colors = {
+        "non_cadre": COLOR_BLUE,
+        "cadre": COLOR_ORANGE,
+    }
+
+    for status_id, label in status_labels.items():
+        df_line = df_subset[df_subset["dimension_status"] == status_id].copy()
+
+        if df_line.empty:
+            continue
+
+        df_line = df_line.sort_values("smic_multiple")
+
+        fig.add_trace(
+            go.Scatter(
+                x=df_line["smic_multiple"],
+                y=df_line["employer_cost_monthly_eur"],
+                mode="lines",
+                name=label,
+                line=dict(color=colors.get(status_id, COLOR_BLUE), width=3),
+                customdata=df_line[[
+                    "gross_monthly_eur",
+                    "net_monthly_eur",
+                    "employer_contributions_monthly_eur",
+                    "rgdu_monthly_eur"
+                ]],
+                hovertemplate=(
+                    "<b>%{x:.2f}× SMIC</b><br>"
+                    + f"{t['gross_wage']}: "
+                    + "%{customdata[0]:,.0f} €<br>"
+                    + f"{t['net_wage']}: "
+                    + "%{customdata[1]:,.0f} €<br>"
+                    + f"{t['employer_cost']}: "
+                    + "%{y:,.0f} €<br>"
+                    + f"{t['employer_contrib']}: "
+                    + "%{customdata[2]:,.0f} €<br>"
+                    + f"{t['rgdu']}: "
+                    + "%{customdata[3]:,.0f} €"
+                    + "<extra></extra>"
+                )
+            )
+        )
+
+    fig.update_layout(
+        template="plotly_white",
+        height=440,
+        margin=dict(l=70, r=35, t=30, b=85),
+        font=dict(family="Arial", size=13, color=COLOR_NAVY),
+        hovermode="x unified",
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.22,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12)
+        ),
+        xaxis=dict(
+            title=t["x_axis"],
+            showgrid=False,
+            zeroline=False
+        ),
+        yaxis=dict(
+            title=t["y_monthly_amount"],
+            ticksuffix=" €",
+            showgrid=True,
+            gridcolor="#e5e7eb",
+            zeroline=False
+        )
+    )
+
+    add_rgdu_zone(fig, lang)
+
+    return fig
+
+
+def make_status_gap_chart(df_subset, lang: str):
+    t = TEXT[lang]
+    fig = go.Figure()
+
+    df_non_cadre = df_subset[df_subset["dimension_status"] == "non_cadre"].copy()
+    df_cadre = df_subset[df_subset["dimension_status"] == "cadre"].copy()
+
+    if df_non_cadre.empty or df_cadre.empty:
+        fig.update_layout(
+            template="plotly_white",
+            height=440,
+            margin=dict(l=70, r=35, t=30, b=85),
+            font=dict(family="Arial", size=13, color=COLOR_NAVY),
+            xaxis=dict(title=t["x_axis"]),
+            yaxis=dict(title=t["executive_gap"])
+        )
+        return fig
+
+    df_non_cadre = df_non_cadre.sort_values("smic_multiple")
+    non_cadre_map = (
+        df_non_cadre.set_index("smic_multiple")["employer_cost_monthly_eur"].to_dict()
+    )
+
+    df_cadre = df_cadre.sort_values("smic_multiple").copy()
+    df_cadre["non_cadre_employer_cost"] = df_cadre["smic_multiple"].map(non_cadre_map)
+    df_cadre["gap_eur"] = (
+        df_cadre["employer_cost_monthly_eur"] - df_cadre["non_cadre_employer_cost"]
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=df_cadre["smic_multiple"],
+            y=df_cadre["gap_eur"],
+            mode="lines",
+            name=t["executive_gap"],
+            line=dict(color=COLOR_RED, width=3),
+            customdata=df_cadre[[
+                "gross_monthly_eur",
+                "employer_cost_monthly_eur",
+                "non_cadre_employer_cost",
+                "gap_eur"
+            ]],
+            hovertemplate=(
+                "<b>%{x:.2f}× SMIC</b><br>"
+                + f"{t['gross_wage']}: "
+                + "%{customdata[0]:,.0f} €<br>"
+                + ("Executive cost: " if lang == "en" else "Coût cadre : ")
+                + "%{customdata[1]:,.0f} €<br>"
+                + ("Non-executive cost: " if lang == "en" else "Coût non-cadre : ")
+                + "%{customdata[2]:,.0f} €<br>"
+                + f"{t['executive_gap']}: "
+                + "%{customdata[3]:,.0f} €"
+                + "<extra></extra>"
+            )
+        )
+    )
+
+    fig.add_hline(
+        y=0,
+        line_width=1.5,
+        line_dash="dash",
+        line_color="#6b7280"
+    )
+
+    fig.update_layout(
+        template="plotly_white",
+        height=440,
+        margin=dict(l=70, r=35, t=30, b=85),
+        font=dict(family="Arial", size=13, color=COLOR_NAVY),
+        hovermode="x unified",
+        showlegend=False,
+        xaxis=dict(
+            title=t["x_axis"],
+            showgrid=False,
+            zeroline=False
+        ),
+        yaxis=dict(
+            title=t["executive_gap"],
+            ticksuffix=" €",
+            showgrid=True,
+            gridcolor="#e5e7eb",
+            zeroline=False
+        )
+    )
+
+    add_rgdu_zone(fig, lang)
+
+    return fig
+
 def fig_to_html(fig):
     return pio.to_html(
         fig,
@@ -970,20 +1309,70 @@ def build_comparison_panels(df, lang: str):
 
         panel_id = f"comparison-{lang}-{status}__{territory}"
 
-        df_subset = df[
+        df_subset_atmp = df[
             (df["dimension_status"] == status)
             & (df["dimension_territory"] == territory)
         ].copy()
 
-        chart_html = fig_to_html(make_atmp_comparison_chart(df_subset, lang))
+        chart_atmp_level_html = fig_to_html(make_atmp_comparison_chart(df_subset_atmp, lang))
+        chart_atmp_gap_html = fig_to_html(make_atmp_gap_chart(df_subset_atmp, lang))
 
         panels.append(f"""
         <div class="comparison-panel" id="{panel_id}">
             <section>
-                <h2>{t["comparison_atmp_title"]}</h2>
-                <p class="chart-subtitle">{t["comparison_atmp_subtitle"]}</p>
-                <div class="chart-card chart-card-full">
-                    <div class="plotly-chart">{chart_html}</div>
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h2>{t["comparison_atmp_title"]}</h2>
+                        <p class="chart-subtitle">{t["comparison_atmp_subtitle"]}</p>
+                        <div class="plotly-chart">{chart_atmp_level_html}</div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h2>{t["comparison_atmp_gap_title"]}</h2>
+                        <p class="chart-subtitle">{t["comparison_atmp_gap_subtitle"]}</p>
+                        <div class="plotly-chart">{chart_atmp_gap_html}</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        """)
+
+    status_combinations = (
+        df[["dimension_territory", "dimension_atmp"]]
+        .drop_duplicates()
+        .sort_values(["dimension_territory", "dimension_atmp"])
+        .to_dict("records")
+    )
+
+    for row in status_combinations:
+        territory = row["dimension_territory"]
+        atmp = row["dimension_atmp"]
+
+        panel_id = f"status-comparison-{lang}-{territory}__{atmp}"
+
+        df_subset_status = df[
+            (df["dimension_territory"] == territory)
+            & (df["dimension_atmp"] == atmp)
+        ].copy()
+
+        chart_status_level_html = fig_to_html(make_status_comparison_chart(df_subset_status, lang))
+        chart_status_gap_html = fig_to_html(make_status_gap_chart(df_subset_status, lang))
+
+        panels.append(f"""
+        <div class="status-comparison-panel" id="{panel_id}">
+            <section>
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h2>{t["comparison_status_title"]}</h2>
+                        <p class="chart-subtitle">{t["comparison_status_subtitle"]}</p>
+                        <div class="plotly-chart">{chart_status_level_html}</div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h2>{t["comparison_status_gap_title"]}</h2>
+                        <p class="chart-subtitle">{t["comparison_status_gap_subtitle"]}</p>
+                        <div class="plotly-chart">{chart_status_gap_html}</div>
+                    </div>
                 </div>
             </section>
         </div>
@@ -1167,17 +1556,6 @@ def build_language_section(df, lang: str, updated_at: str):
                 </div>
             </div>
 
-	    <div class="tab-panel" id="tab-{lang}-comparisons">
-    		<section>
-        	   <h2>{t["comparisons_title"]}</h2>
-        	   <p class="interpretation">{t["comparisons_intro"]}</p>
-    		</section>
-
-    	   	<div id="comparison-panels-{lang}">
-        		{comparison_panels_html}
-    	   	</div>
-	   </div>
-
             <div class="tab-panel" id="tab-{lang}-data">
                 <section>
                     <h2>{t["data_title"]}</h2>
@@ -1305,6 +1683,7 @@ def main():
             const selectedProfile = restoreCombinatorialSelectors(lang);
             showProfile(lang, selectedProfile);
             showComparison(lang);
+            showStatusComparison(lang);
             syncDataSelectorsFromSimulation(lang);
             showDataPanel(lang);
             restoreTab(lang);
@@ -1399,6 +1778,7 @@ def main():
 
             showProfile(lang, profileId);
             showComparison(lang);
+            showStatusComparison(lang);
             showDataPanel(lang);
         }}
 
@@ -1411,6 +1791,7 @@ def main():
 
             showProfile(lang, profileId);
             showComparison(lang);
+            showStatusComparison(lang);
             syncDataSelectorsFromSimulation(lang);
             showDataPanel(lang);
         }}
@@ -1463,24 +1844,53 @@ def main():
         }}
 	
         function showComparison(lang) {{
-            const statusSelect = document.getElementById("status-select-" + lang);
-            const territorySelect = document.getElementById("territory-select-" + lang);
-
-            if (!statusSelect || !territorySelect) {{
-                return;
-            }}
-
-            const status = statusSelect.value;
-            const territory = territorySelect.value;
-
             const panels = document.querySelectorAll("#comparison-panels-" + lang + " .comparison-panel");
 
             panels.forEach(function(panel) {{
                 panel.classList.remove("active");
             }});
 
-            const comparisonId = "comparison-" + lang + "-" + status + "__" + territory;
-            const target = document.getElementById(comparisonId);
+            const statusSelect = document.getElementById("status-select-" + lang);
+            const territorySelect = document.getElementById("territory-select-" + lang);
+
+            let target = null;
+
+            if (statusSelect && territorySelect) {{
+                const status = statusSelect.value;
+                const territory = territorySelect.value;
+                const comparisonId = "comparison-" + lang + "-" + status + "__" + territory;
+                target = document.getElementById(comparisonId);
+            }}
+
+            if (target) {{
+                target.classList.add("active");
+            }} else if (panels.length > 0) {{
+                panels[0].classList.add("active");
+            }}
+
+            setTimeout(function() {{
+                window.dispatchEvent(new Event("resize"));
+            }}, 200);
+        }}
+
+        function showStatusComparison(lang) {{
+            const panels = document.querySelectorAll("#comparison-panels-" + lang + " .status-comparison-panel");
+
+            panels.forEach(function(panel) {{
+                panel.classList.remove("active");
+            }});
+
+            const territorySelect = document.getElementById("territory-select-" + lang);
+            const atmpSelect = document.getElementById("atmp-select-" + lang);
+
+            let target = null;
+
+            if (territorySelect && atmpSelect) {{
+                const territory = territorySelect.value;
+                const atmp = atmpSelect.value;
+                const comparisonId = "status-comparison-" + lang + "-" + territory + "__" + atmp;
+                target = document.getElementById(comparisonId);
+            }}
 
             if (target) {{
                 target.classList.add("active");
@@ -1626,8 +2036,9 @@ def main():
         setLanguage(savedLanguage);
 
         setTimeout(function() {{
-            showComparison(savedLanguage);
-        }}, 300);
+    		showComparison(savedLanguage);
+    		showStatusComparison(savedLanguage);
+	}}, 300);
     </script>
 </body>
 </html>
