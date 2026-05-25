@@ -2392,9 +2392,16 @@ def main():
                 "#section-" + lang + " .tab-button[data-tab='" + tabName + "']"
             );
 
-            if (targetPanel) {{
-                targetPanel.classList.add("active");
-            }}
+            if (targetPanel) {
+    		targetPanel.classList.add("active");
+
+    	    	if (tabName === "contact") {
+        		setTimeout(function() {
+            			targetPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+            			window.dispatchEvent(new Event("resize"));
+        		}, 100);
+    	    	}
+	    }
 
             if (targetButton) {{
                 targetButton.classList.add("active");
