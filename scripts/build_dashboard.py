@@ -1728,7 +1728,13 @@ def build_dimension_options(df, dimension_column, label_map, lang):
     return "\n".join(options)
 
 
-def build_language_section(df, lang: str, updated_at: str):
+def build_language_section(
+    df,
+    lang: str,
+    updated_at: str,
+    parameter_version: str,
+    parameter_effective_from: str
+):
     t = TEXT[lang]
     methodology_html = build_methodology_list(lang)
 
@@ -2017,7 +2023,11 @@ def build_language_section(df, lang: str, updated_at: str):
             </div>
         </main>
 
-        <footer>{t["footer"]}: {updated_at}</footer>
+        <footer>
+    		{t["footer"]}: {updated_at}
+    		· Paramètres réglementaires: {parameter_version}
+    		· Date d’effet: {parameter_effective_from}
+        </footer>
     </div>
     """
 
@@ -2036,6 +2046,8 @@ def load_parameters():
 def main():
     df = pd.read_csv(DATA_PATH)
     parameters = load_parameters()
+    parameter_version = parameters.get("version", "unknown")
+    parameter_effective_from = parameters.get("effective_from", "unknown")
 
     if "status" in df.columns:
         df = df[df["status"] == "ok"].copy()
@@ -2052,8 +2064,21 @@ def main():
 
     updated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    english_section = build_language_section(df, "en", updated_at)
-    french_section = build_language_section(df, "fr", updated_at)
+    english_section = build_language_section(
+    	df,
+    	"en",
+    	updated_at,
+   	parameter_version,
+    	parameter_effective_from
+    )
+
+    french_section = build_language_section(
+    	df,
+    	"fr",
+    	updated_at,
+    	parameter_version,
+    	parameter_effective_from
+    )
 
     html = f"""<!DOCTYPE html>
 <html lang="fr">
