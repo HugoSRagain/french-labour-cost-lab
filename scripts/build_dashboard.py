@@ -2004,6 +2004,7 @@ def build_language_section(
                         </div>
                     </div>
                 </section>
+	    </div>
 
             <div class="tab-panel" id="tab-{lang}-working-paper">
                 <section class="working-paper-section">
@@ -2392,16 +2393,16 @@ def main():
                 "#section-" + lang + " .tab-button[data-tab='" + tabName + "']"
             );
 
-            if (targetPanel) {
+            if (targetPanel) {{
     		targetPanel.classList.add("active");
 
-    	    	if (tabName === "contact") {
-        		setTimeout(function() {
-            			targetPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    	    	if (tabName === "contact") {{
+        		setTimeout(function() {{
+            			targetPanel.scrollIntoView({{ behavior: "smooth", block: "start" }});
             			window.dispatchEvent(new Event("resize"));
-        		}, 100);
-    	    	}
-	    }
+        		}}, 100);
+    	    	}}
+	    }}
 
             if (targetButton) {{
                 targetButton.classList.add("active");
