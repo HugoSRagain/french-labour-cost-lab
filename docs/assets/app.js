@@ -546,6 +546,87 @@ function renderRgduDeltaChart(data, lang) {
     });
 }
 
+function renderEmployerCostReformChart(data, lang) {
+    Papa.parse("data/employer_cost_reform_june_2026.csv", {
+        download: true,
+        header: true,
+        dynamicTyping: true,
+        complete: function(results) {
+            const rows = results.data
+                .filter(row => row && row.smic_multiple !== null && row.smic_multiple !== undefined)
+                .filter(row => num(row.smic_multiple) >= 1.0)
+                .sort((a, b) => num(a.smic_multiple) - num(b.smic_multiple));
+
+            const traces = [
+                {
+                    x: rows.map(row => num(row.smic_multiple)),
+                    y: rows.map(row => num(row.delta_cost_eur)),
+                    mode: "lines",
+                    name: lang === "fr" ? "Hausse du coût employeur" : "Employer cost increase",
+                    line: {
+                        color: COLORS.orange,
+                        width: 3
+                    },
+                    fill: "tozeroy",
+                    fillcolor: "rgba(249, 115, 22, 0.14)",
+                    customdata: rows.map(row => [
+                        num(row.employer_cost_monthly_eur_may),
+                        num(row.employer_cost_monthly_eur_june),
+                        num(row.delta_cost_eur),
+                        num(row.delta_cost_pct)
+                    ]),
+                    hovertemplate:
+                        "<b>%{x:.2f}× SMIC</b><br>" +
+                        (lang === "fr" ? "Coût employeur avant réforme" : "Employer cost before reform") + ": %{customdata[0]:,.0f} €<br>" +
+                        (lang === "fr" ? "Coût employeur après réforme" : "Employer cost after reform") + ": %{customdata[1]:,.0f} €<br>" +
+                        (lang === "fr" ? "Hausse mensuelle" : "Monthly increase") + ": %{customdata[2]:,.0f} €<br>" +
+                        (lang === "fr" ? "Hausse relative" : "Relative increase") + ": %{customdata[3]:.2f}%" +
+                        "<extra></extra>",
+                    type: "scatter"
+                }
+            ];
+
+            const layout = baseLayout(
+                lang,
+                lang === "fr"
+                    ? "Hausse mensuelle du coût employeur, euros"
+                    : "Monthly employer cost increase, euros"
+            );
+
+            layout.height = 500;
+            layout.margin = {
+                l: 72,
+                r: 42,
+                t: 80,
+                b: 95
+            };
+            layout.xaxis.range = [0.95, 3.5];
+            layout.yaxis.ticksuffix = " €";
+
+            layout.shapes = layout.shapes || [];
+            layout.shapes.push({
+                type: "line",
+                xref: "paper",
+                yref: "y",
+                x0: 0,
+                x1: 1,
+                y0: 0,
+                y1: 0,
+                line: {
+                    color: COLORS.gray,
+                    dash: "dash",
+                    width: 1.5
+                }
+            });
+
+            plot("chart-employer-cost-reform-" + lang, traces, layout);
+        },
+        error: function(error) {
+            console.error("Employer cost reform CSV loading error:", error);
+        }
+    });
+}
+
 function renderWedgeChart(data, lang) {
     const t = getText(lang);
 
@@ -1220,6 +1301,127 @@ function renderNetGrossReturnChart(data, lang) {
     plot("chart-net-gross-return-" + lang, traces, layout);
 }
 
+function renderWaterfallChart(data, lang) {
+    const t = getText(lang);
+    const wageSelect = getElement("waterfall-wage-select", lang);
+    const targetSmic = wageSelect ? num(wageSelect.value) : 2.0;
+
+    let row = data[0];
+    let minDistance = Infinity;
+
+    data.forEach(d => {
+        const distance = Math.abs(num(d.smic_multiple) - targetSmic);
+
+        if (distance < minDistance) {
+            row = d;
+            minDistance = distance;
+        }
+    });
+
+    if (!row) {
+        return;
+    }
+
+    const netWage = num(row.net_monthly_eur);
+    const employeeContrib = num(row.employee_contributions_monthly_eur);
+    const grossWage = num(row.gross_monthly_eur);
+    const employerContribNet = num(row.employer_contributions_monthly_eur);
+    const rgdu = num(row.rgdu_monthly_eur);
+    const employerContribGross = employerContribNet + rgdu;
+    const employerCost = num(row.employer_cost_monthly_eur);
+
+    const traces = [
+        {
+            type: "waterfall",
+            orientation: "v",
+            measure: [
+                "absolute",
+                "relative",
+                "total",
+                "relative",
+                "relative",
+                "total"
+            ],
+            x: lang === "fr"
+                ? [
+                    "Salaire net",
+                    "Cotisations salarié",
+                    "Salaire brut",
+                    "Cotisations employeur brutes",
+                    "Allègements RGDU",
+                    "Coût employeur"
+                ]
+                : [
+                    "Net wage",
+                    "Employee contributions",
+                    "Gross wage",
+                    "Gross employer contributions",
+                    "RGDU reliefs",
+                    "Employer cost"
+                ],
+            y: [
+                netWage,
+                employeeContrib,
+                grossWage,
+                employerContribGross,
+                -rgdu,
+                employerCost
+            ],
+            text: [
+                euro(netWage),
+                "+" + euro(employeeContrib),
+                euro(grossWage),
+                "+" + euro(employerContribGross),
+                "-" + euro(rgdu),
+                euro(employerCost)
+            ],
+            textposition: "outside",
+            connector: {
+                line: {
+                    color: COLORS.gray,
+                    width: 1
+                }
+            },
+            increasing: {
+                marker: {
+                    color: COLORS.orange
+                }
+            },
+            decreasing: {
+                marker: {
+                    color: COLORS.red
+                }
+            },
+            totals: {
+                marker: {
+                    color: COLORS.blue
+                }
+            },
+            hovertemplate:
+                "<b>%{x}</b><br>" +
+                (lang === "fr" ? "Montant" : "Amount") + ": %{y:,.0f} €<extra></extra>"
+        }
+    ];
+
+    const layout = baseLayout(
+        lang,
+        lang === "fr" ? "Montant mensuel, euros" : "Monthly amount, euros"
+    );
+
+    layout.height = 520;
+    layout.margin = {
+        l: 72,
+        r: 42,
+        t: 40,
+        b: 120
+    };
+    layout.xaxis.title = "";
+    layout.yaxis.ticksuffix = " €";
+    layout.showlegend = false;
+
+    plot("chart-waterfall-" + lang, traces, layout);
+}
+
 function renderDecompositionChart(data, lang) {
     const t = getText(lang);
     const wageSelect = getElement("decomposition-wage-select", lang);
@@ -1424,11 +1626,13 @@ function renderSimulation(lang = getActiveLanguage()) {
     renderEmployerRateChart(data, lang);
     renderRgduChart(data, lang);
     renderRgduDeltaChart(data, lang);
+    renderEmployerCostReformChart(data, lang);
     renderWedgeChart(data, lang);
     renderRatioChart(data, lang);
     renderMarginalChart(data, lang);
     renderTotalLevyChart(data, lang);
     renderNetGrossReturnChart(data, lang);
+    renderWaterfallChart(data, lang);
     renderDecompositionChart(data, lang);
 }
 
@@ -2088,6 +2292,14 @@ function setupEventsForLanguage(lang) {
             });
         }
     });
+
+    const waterfallSelect = getElement("waterfall-wage-select", lang);
+
+    if (waterfallSelect) {
+        waterfallSelect.addEventListener("change", function () {
+            renderWaterfallChart(getProfileData(lang), lang);
+        });
+    }
 
     const wageSelect = getElement("decomposition-wage-select", lang);
 

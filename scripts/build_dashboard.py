@@ -131,6 +131,8 @@ TEXT = {
 	"chart_rgdu_subtitle": "Monthly relief amount retrieved directly from the Mon-entreprise / URSSAF API.",
 	"chart_rgdu_delta_title": "Impact of the 1 June 2026 reform on contribution reliefs",
 	"chart_rgdu_delta_subtitle": "Monthly change in RGDU after the June 2026 SMIC increase and the freezing of relief parameters. Exploratory simulation based on currently available Mon-entreprise / URSSAF outputs.",
+	"chart_employer_cost_reform_title": "Impact of the relief freeze on employer cost",
+	"chart_employer_cost_reform_subtitle": "Estimated monthly increase in employer cost after the SMIC increase and the freezing of relief parameters.",
         "chart_wedge_title": "Social wedge as a share of employer cost",
         "chart_wedge_subtitle": "The social wedge measures the gap between what the employer pays and what the employee receives.",
         "chart_ratio_title": "Employer cost to net wage ratio",
@@ -182,6 +184,8 @@ TEXT = {
         "y_monthly_rgdu": "Monthly relief amount, euros",
         "y_annual_rgdu": "Annual relief amount, euros",
         "y2_rgdu": "RGDU / gross wage",
+	"waterfall_title": "From net wage to employer cost",
+	"waterfall_subtitle": "Simplified and robust decomposition from net wage to total employer cost.",
 	"decomposition_title": "Employer cost decomposition",
 	"decomposition_subtitle": (
     		"This chart decomposes employer cost at a selected wage point. "
@@ -298,6 +302,8 @@ TEXT = {
 	"chart_rgdu_subtitle": "Montant mensuel d’allègement récupéré directement depuis l’API Mon-entreprise / URSSAF.",
 	"chart_rgdu_delta_title": "Impact de la réforme du 1er juin 2026 sur les allègements",
 	"chart_rgdu_delta_subtitle": "Variation mensuelle de RGDU après la hausse du SMIC et le gel des paramètres d’allègement. Simulation exploratoire à partir des sorties Mon-entreprise / URSSAF disponibles.",
+	"chart_employer_cost_reform_title": "Impact du gel des allègements sur le coût employeur",
+	"chart_employer_cost_reform_subtitle": "Hausse mensuelle du coût employeur estimée après la hausse du SMIC et le gel des paramètres d’allègements.",
         "chart_wedge_title": "Coin social en part du coût employeur",
         "chart_wedge_subtitle": "Le coin social mesure l’écart entre ce que l’employeur paie et ce que le salarié reçoit.",
         "chart_ratio_title": "Ratio coût employeur / salaire net",
@@ -349,6 +355,8 @@ TEXT = {
         "y_monthly_rgdu": "Montant mensuel d’allègement, euros",
         "y_annual_rgdu": "Montant annuel d’allègement, euros",
         "y2_rgdu": "RGDU / salaire brut",
+	"waterfall_title": "Du salaire net au coût employeur",
+	"waterfall_subtitle": "Décomposition simplifiée et robuste du passage du salaire net au coût total employeur.",
 	"decomposition_title": "Décomposition du coût employeur",
 	"decomposition_subtitle": (
     		"Ce graphique décompose le coût employeur à un point de salaire donné. "
@@ -1466,6 +1474,22 @@ def build_profile_panel(df_profile, profile_id, lang: str):
                     <div id="chart-rgdu-delta-{lang}" class="plotly-chart lazy-chart"></div>
                 </div>
 
+                <div class="chart-card chart-card-full">
+                    <h3>{t["chart_employer_cost_reform_title"]}</h3>
+                    <p class="chart-subtitle">{t["chart_employer_cost_reform_subtitle"]}</p>
+                    <div class="chart-note">
+                        <strong>{"Lecture :" if lang == "fr" else "Reading:"}</strong>
+                        {
+                            "le pic observé autour de 3 SMIC correspond à la disparition anticipée de la réduction générale dégressive unique (RGDU) lorsque les paramètres restent gelés malgré la hausse du SMIC."
+                            if lang == "fr"
+                            else
+                            "the spike observed around 3 SMIC corresponds to the earlier phase-out of the general degressive contribution relief (RGDU) when parameters remain frozen despite the SMIC increase."
+                        }
+                    </div>
+                    <div id="chart-employer-cost-reform-{lang}" class="plotly-chart lazy-chart"></div>
+                </div>
+
+
                 <div class="chart-card">
                     <h3>{t["chart_wedge_title"]}</h3>
                     <p class="chart-subtitle">{t["chart_wedge_subtitle"]}</p>
@@ -1861,6 +1885,31 @@ def build_language_section(
                 </div>
 
                 <section>
+                    <h2>{t["waterfall_title"]}</h2>
+                    <p class="chart-subtitle">{t["waterfall_subtitle"]}</p>
+
+                <section>
+                    <h2>{t["waterfall_title"]}</h2>
+                    <p class="chart-subtitle">{t["waterfall_subtitle"]}</p>
+
+                    <div class="profile-selector decomposition-selector">
+                        <div class="selector-field">
+                            <label for="waterfall-wage-select-{lang}">{t["decomposition_wage_label"]}</label>
+                            <select id="waterfall-wage-select-{lang}" onchange="renderWaterfallChart(getProfileData('{lang}'), '{lang}')">
+                                <option value="1.00">1 SMIC</option>
+                                <option value="1.50">1,5 SMIC</option>
+                                <option value="2.00" selected>2 SMIC</option>
+                                <option value="3.00">3 SMIC</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="chart-card chart-card-full">
+                        <div id="chart-waterfall-{lang}" class="plotly-chart lazy-chart"></div>
+                    </div>
+                </section>
+
+                <section>
                     <h2>{t["decomposition_title"]}</h2>
                     <p class="chart-subtitle">{t["decomposition_subtitle"]}</p>
 
@@ -1880,6 +1929,7 @@ def build_language_section(
                         <div id="chart-decomposition-{lang}" class="plotly-chart lazy-chart"></div>
                     </div>
                 </section>
+
 
                 <div id="metrics-panels-{lang}">
                     {metrics_panels_html}

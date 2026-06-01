@@ -109,6 +109,17 @@
                     <div id="chart-rgdu-delta-en" class="plotly-chart lazy-chart"></div>
                 </div>
 
+                <div class="chart-card chart-card-full">
+                    <h3>Impact of the relief freeze on employer cost</h3>
+                    <p class="chart-subtitle">Estimated monthly increase in employer cost after the SMIC increase and the freezing of relief parameters.</p>
+                    <div class="chart-note">
+                        <strong>Reading:</strong>
+                        the spike observed around 3 SMIC corresponds to the earlier phase-out of the general degressive contribution relief (RGDU) when parameters remain frozen despite the SMIC increase.
+                    </div>
+                    <div id="chart-employer-cost-reform-en" class="plotly-chart lazy-chart"></div>
+                </div>
+
+
                 <div class="chart-card">
                     <h3>Social wedge as a share of employer cost</h3>
                     <p class="chart-subtitle">The social wedge measures the gap between what the employer pays and what the employee receives.</p>
@@ -145,6 +156,31 @@
                 </div>
 
                 <section>
+                    <h2>From net wage to employer cost</h2>
+                    <p class="chart-subtitle">Simplified and robust decomposition from net wage to total employer cost.</p>
+
+                <section>
+                    <h2>From net wage to employer cost</h2>
+                    <p class="chart-subtitle">Simplified and robust decomposition from net wage to total employer cost.</p>
+
+                    <div class="profile-selector decomposition-selector">
+                        <div class="selector-field">
+                            <label for="waterfall-wage-select-en">Selected wage point</label>
+                            <select id="waterfall-wage-select-en" onchange="renderWaterfallChart(getProfileData('en'), 'en')">
+                                <option value="1.00">1 SMIC</option>
+                                <option value="1.50">1,5 SMIC</option>
+                                <option value="2.00" selected>2 SMIC</option>
+                                <option value="3.00">3 SMIC</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="chart-card chart-card-full">
+                        <div id="chart-waterfall-en" class="plotly-chart lazy-chart"></div>
+                    </div>
+                </section>
+
+                <section>
                     <h2>Employer cost decomposition</h2>
                     <p class="chart-subtitle">This chart decomposes employer cost at a selected wage point. Contribution reliefs are shown as a reduction in theoretical employer contributions.</p>
 
@@ -164,6 +200,7 @@
                         <div id="chart-decomposition-en" class="plotly-chart lazy-chart"></div>
                     </div>
                 </section>
+
 
                 <div id="metrics-panels-en">
                     
@@ -809,7 +846,7 @@
         </main>
 
         <footer>
-    		Last updated: 2026-06-01 14:11
+    		Last updated: 2026-06-01 18:34
     		· Paramètres réglementaires: 2026-05
     		· Date d’effet: 2026-05-01
         </footer>
@@ -907,6 +944,17 @@
                     <div id="chart-rgdu-delta-fr" class="plotly-chart lazy-chart"></div>
                 </div>
 
+                <div class="chart-card chart-card-full">
+                    <h3>Impact du gel des allègements sur le coût employeur</h3>
+                    <p class="chart-subtitle">Hausse mensuelle du coût employeur estimée après la hausse du SMIC et le gel des paramètres d’allègements.</p>
+                    <div class="chart-note">
+                        <strong>Lecture :</strong>
+                        le pic observé autour de 3 SMIC correspond à la disparition anticipée de la réduction générale dégressive unique (RGDU) lorsque les paramètres restent gelés malgré la hausse du SMIC.
+                    </div>
+                    <div id="chart-employer-cost-reform-fr" class="plotly-chart lazy-chart"></div>
+                </div>
+
+
                 <div class="chart-card">
                     <h3>Coin social en part du coût employeur</h3>
                     <p class="chart-subtitle">Le coin social mesure l’écart entre ce que l’employeur paie et ce que le salarié reçoit.</p>
@@ -943,6 +991,31 @@
                 </div>
 
                 <section>
+                    <h2>Du salaire net au coût employeur</h2>
+                    <p class="chart-subtitle">Décomposition simplifiée et robuste du passage du salaire net au coût total employeur.</p>
+
+                <section>
+                    <h2>Du salaire net au coût employeur</h2>
+                    <p class="chart-subtitle">Décomposition simplifiée et robuste du passage du salaire net au coût total employeur.</p>
+
+                    <div class="profile-selector decomposition-selector">
+                        <div class="selector-field">
+                            <label for="waterfall-wage-select-fr">Point de salaire sélectionné</label>
+                            <select id="waterfall-wage-select-fr" onchange="renderWaterfallChart(getProfileData('fr'), 'fr')">
+                                <option value="1.00">1 SMIC</option>
+                                <option value="1.50">1,5 SMIC</option>
+                                <option value="2.00" selected>2 SMIC</option>
+                                <option value="3.00">3 SMIC</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="chart-card chart-card-full">
+                        <div id="chart-waterfall-fr" class="plotly-chart lazy-chart"></div>
+                    </div>
+                </section>
+
+                <section>
                     <h2>Décomposition du coût employeur</h2>
                     <p class="chart-subtitle">Ce graphique décompose le coût employeur à un point de salaire donné. Les allègements de cotisations sont représentés comme une réduction des cotisations employeur théoriques.</p>
 
@@ -962,6 +1035,7 @@
                         <div id="chart-decomposition-fr" class="plotly-chart lazy-chart"></div>
                     </div>
                 </section>
+
 
                 <div id="metrics-panels-fr">
                     
@@ -1607,7 +1681,7 @@
         </main>
 
         <footer>
-    		Dernière mise à jour: 2026-06-01 14:11
+    		Dernière mise à jour: 2026-06-01 18:34
     		· Paramètres réglementaires: 2026-05
     		· Date d’effet: 2026-05-01
         </footer>

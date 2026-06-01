@@ -1014,4 +1014,20 @@ body.dark-mode .methodology-versioning-card {
     background: #0f172a;
     border-color: #374151;
 }
+
+.chart-note {
+    margin: 12px 0 18px 0;
+    padding: 10px 14px;
+    max-width: 900px;
+    border-left: 4px solid #2563eb;
+    background: rgba(37, 99, 235, 0.08);
+    color: #475569;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    border-radius: 10px;
+}
+
+.chart-note strong {
+    color: #0f172a;
+}
 }
