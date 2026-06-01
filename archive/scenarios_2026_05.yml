@@ -1,0 +1,15 @@
+metadata:
+  project: "French Labour Cost Lab"
+  country: "France"
+  version: "0.2.0"
+  note: "Official dataset is generated through the Mon-entreprise / URSSAF API."
+
+baseline:
+  monthly_smic_gross: 1801.80
+  min_smic_multiple: 0.8
+  max_smic_multiple: 3.5
+  step_smic_multiple: 0.01
+
+assumptions:
+  reference_case: "Private-sector employee, generic case."
+  note: "Results depend on the Mon-entreprise / URSSAF calculation engine and may vary with firm size, sector, location, collective agreement, executive status and specific contribution regimes."
