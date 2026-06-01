@@ -127,8 +127,10 @@ TEXT = {
         "chart_cost_subtitle": "Compare monthly gross wage, net wage and total employer cost across the wage grid.",
         "chart_employer_rate_title": "Effective employer contribution rate",
         "chart_employer_rate_subtitle": "Employer contribution rates are computed as employer contributions divided by gross wage.",
-        "chart_rgdu_title": "General degressive employer contribution reduction (RGDU) — 2026",
-        "chart_rgdu_subtitle": "Monthly or annual amount of the general degressive employer contribution reduction computed directly by the Mon-entreprise / URSSAF API.",
+        "chart_rgdu_title": "Employer contribution reliefs (RGDU) – before and after the 1 June 2026 reform",
+	"chart_rgdu_subtitle": "Monthly relief amount retrieved directly from the Mon-entreprise / URSSAF API.",
+	"chart_rgdu_delta_title": "Impact of the 1 June 2026 reform on contribution reliefs",
+	"chart_rgdu_delta_subtitle": "Monthly change in RGDU after the June 2026 SMIC increase and the freezing of relief parameters. Exploratory simulation based on currently available Mon-entreprise / URSSAF outputs.",
         "chart_wedge_title": "Social wedge as a share of employer cost",
         "chart_wedge_subtitle": "The social wedge measures the gap between what the employer pays and what the employee receives.",
         "chart_ratio_title": "Employer cost to net wage ratio",
@@ -292,8 +294,10 @@ TEXT = {
         "chart_cost_subtitle": "Comparaison du salaire brut, du salaire net et du coût total employeur le long de la grille salariale.",
         "chart_employer_rate_title": "Taux effectif de cotisations employeur",
         "chart_employer_rate_subtitle": "Le taux de cotisations employeur est calculé en rapportant les cotisations employeur au salaire brut.",
-        "chart_rgdu_title": "Réduction générale dégressive unique (RGDU) — 2026",
-        "chart_rgdu_subtitle": "Montant mensuel ou annuel de réduction générale dégressive unique récupéré directement depuis l’API Mon-entreprise / URSSAF.",
+        "chart_rgdu_title": "Allègements de cotisations (RGDU) – avant et après la réforme du 1er juin 2026",
+	"chart_rgdu_subtitle": "Montant mensuel d’allègement récupéré directement depuis l’API Mon-entreprise / URSSAF.",
+	"chart_rgdu_delta_title": "Impact de la réforme du 1er juin 2026 sur les allègements",
+	"chart_rgdu_delta_subtitle": "Variation mensuelle de RGDU après la hausse du SMIC et le gel des paramètres d’allègement. Simulation exploratoire à partir des sorties Mon-entreprise / URSSAF disponibles.",
         "chart_wedge_title": "Coin social en part du coût employeur",
         "chart_wedge_subtitle": "Le coin social mesure l’écart entre ce que l’employeur paie et ce que le salarié reçoit.",
         "chart_ratio_title": "Ratio coût employeur / salaire net",
@@ -498,8 +502,6 @@ def make_rgdu_chart(df, lang: str):
     fig = go.Figure()
 
     df_rgdu = df[df["smic_multiple"] >= 1.0].copy()
-    df_rgdu.loc[df_rgdu["smic_multiple"] >= 3.0, "rgdu_monthly_eur"] = 0.0
-    df_rgdu.loc[df_rgdu["smic_multiple"] >= 3.0, "rgdu_rate_gross"] = 0.0
     df_rgdu["rgdu_annual_eur"] = df_rgdu["rgdu_monthly_eur"] * 12
     df_rgdu["rgdu_rate_percent"] = df_rgdu["rgdu_rate_gross"] * 100
 
@@ -1459,6 +1461,12 @@ def build_profile_panel(df_profile, profile_id, lang: str):
                 </div>
 
                 <div class="chart-card">
+                    <h3>{t["chart_rgdu_delta_title"]}</h3>
+                    <p class="chart-subtitle">{t["chart_rgdu_delta_subtitle"]}</p>
+                    <div id="chart-rgdu-delta-{lang}" class="plotly-chart lazy-chart"></div>
+                </div>
+
+                <div class="chart-card">
                     <h3>{t["chart_wedge_title"]}</h3>
                     <p class="chart-subtitle">{t["chart_wedge_subtitle"]}</p>
                     <div id="chart-wedge-{lang}" class="plotly-chart lazy-chart"></div>
@@ -2124,7 +2132,7 @@ def main():
         window.dataLayer = window.dataLayer || [];
         function gtag(){{dataLayer.push(arguments);}}
         gtag('js', new Date());
-        gtag('config', 'G-F430KVB7BT');
+        gtag('config', 'G-N46D6NCQJ9');
     </script>
     <title>French Labour Cost Lab</title>
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>

@@ -208,7 +208,7 @@ function baseLayout(lang, yTitle) {
     };
 }
 
-function addRgduZone(layout, lang) {
+function addRgduZone(layout, lang, x0 = 1, x1 = 3) {
     const t = getText(lang);
 
     layout.shapes = layout.shapes || [];
@@ -219,8 +219,8 @@ function addRgduZone(layout, lang) {
             type: "rect",
             xref: "x",
             yref: "paper",
-            x0: 1,
-            x1: 3,
+            x0: x0,
+            x1: x1,
             y0: 0,
             y1: 1,
             fillcolor: "rgba(37, 99, 235, 0.08)",
@@ -233,8 +233,8 @@ function addRgduZone(layout, lang) {
             type: "line",
             xref: "x",
             yref: "paper",
-            x0: 1,
-            x1: 1,
+            x0: x0,
+            x1: x0,
             y0: 0,
             y1: 1,
             line: {
@@ -247,8 +247,8 @@ function addRgduZone(layout, lang) {
             type: "line",
             xref: "x",
             yref: "paper",
-            x0: 3,
-            x1: 3,
+            x0: x1,
+            x1: x1,
             y0: 0,
             y1: 1,
             line: {
@@ -262,9 +262,11 @@ function addRgduZone(layout, lang) {
     layout.annotations.push({
         xref: "x",
         yref: "paper",
-        x: 1.05,
+        x: x0 + 0.05,
         y: 0.97,
-        text: t.rgdu_zone,
+        text: lang === "fr"
+            ? `Zone dégressive RGDU<br>${x0.toFixed(2)} à ${x1.toFixed(2)} SMIC`
+            : `RGDU degressive area<br>${x0.toFixed(2)} to ${x1.toFixed(2)} SMIC`,
         showarrow: false,
         xanchor: "left",
         yanchor: "top",
@@ -276,6 +278,28 @@ function addRgduZone(layout, lang) {
 
     return layout;
 }
+
+function getRgduZoneFromData(data) {
+    const positiveRows = data
+        .filter(row => num(row.smic_multiple) >= 1)
+        .filter(row => num(row.rgdu_monthly_eur) > 0)
+        .sort((a, b) => num(a.smic_multiple) - num(b.smic_multiple));
+
+    if (!positiveRows.length) {
+        return {
+            x0: 1,
+            x1: 3
+        };
+    }
+
+    return {
+        x0: num(positiveRows[0].smic_multiple),
+        x1: num(positiveRows[positiveRows.length - 1].smic_multiple)
+    };
+}
+
+
+
 
 function renderCostChart(data, lang) {
     const t = getText(lang);
@@ -317,7 +341,13 @@ function renderCostChart(data, lang) {
         }
     ];
 
-    const layout = addRgduZone(baseLayout(lang, t.y_amount), lang);
+    const rgduZone = getRgduZoneFromData(DATA);
+    const layout = addRgduZone(
+    baseLayout(lang, t.y_amount),
+    	lang,
+    	rgduZone.x0,
+    	rgduZone.x1
+    );
     layout.yaxis.ticksuffix = " €";
 
     plot("chart-cost-" + lang, traces, layout);
@@ -340,149 +370,180 @@ function renderEmployerRateChart(data, lang) {
         }
     ];
 
-    const layout = addRgduZone(baseLayout(lang, t.employer_rate), lang);
+    const rgduZone = getRgduZoneFromData(DATA);
+    const layout = addRgduZone(
+    	baseLayout(lang, t.employer_rate),
+    	lang,
+    	rgduZone.x0,
+    	rgduZone.x1
+    );
     layout.yaxis.ticksuffix = "%";
 
     plot("chart-employer-rate-" + lang, traces, layout);
 }
 
 function renderRgduChart(data, lang) {
-    const t = getText(lang);
+    Papa.parse("data/rgdu_reform_june_2026.csv", {
+        download: true,
+        header: true,
+        dynamicTyping: true,
+        complete: function(results) {
+            const rows = results.data
+                .filter(row => row && row.smic_multiple !== null && row.smic_multiple !== undefined)
+                .filter(row => num(row.smic_multiple) >= 1.0)
+                .sort((a, b) => num(a.smic_multiple) - num(b.smic_multiple));
 
-    const filtered = data
-        .filter(d => num(d.smic_multiple) >= 1)
-        .map(d => {
-            const smic = num(d.smic_multiple);
-            const monthly = smic >= 3 ? 0 : num(d.rgdu_monthly_eur);
-            const gross = num(d.gross_monthly_eur);
-
-            return {
-                smic_multiple: smic,
-                gross_monthly_eur: gross,
-                employer_cost_monthly_eur: num(d.employer_cost_monthly_eur),
-                rgdu_monthly_eur: monthly,
-                rgdu_annual_eur: monthly * 12,
-                rgdu_rate_percent: gross > 0 ? (monthly / gross) * 100 : 0
-            };
-        });
-
-    const traces = [
-        {
-            x: filtered.map(d => d.smic_multiple),
-            y: filtered.map(d => d.rgdu_monthly_eur),
-            mode: "lines",
-            name: lang === "fr" ? "Montant mensuel" : "Monthly amount",
-            line: {
-                color: COLORS.purple,
-                width: 3
-            },
-            fill: "tozeroy",
-            fillcolor: "rgba(124, 58, 237, 0.12)",
-            type: "scatter",
-            yaxis: "y"
-        },
-        {
-            x: filtered.map(d => d.smic_multiple),
-            y: filtered.map(d => d.rgdu_annual_eur),
-            mode: "lines",
-            name: lang === "fr" ? "Montant annuel" : "Annual amount",
-            line: {
-                color: COLORS.purple,
-                width: 3
-            },
-            fill: "tozeroy",
-            fillcolor: "rgba(124, 58, 237, 0.12)",
-            type: "scatter",
-            yaxis: "y",
-            visible: false
-        },
-        {
-            x: filtered.map(d => d.smic_multiple),
-            y: filtered.map(d => d.rgdu_rate_percent),
-            mode: "lines",
-            name: lang === "fr" ? "RGDU / salaire brut" : "RGDU / gross wage",
-            line: {
-                color: COLORS.red,
-                width: 2.5,
-                dash: "dot"
-            },
-            type: "scatter",
-            yaxis: "y2"
-        }
-    ];
-
-    const layout = addRgduZone(baseLayout(lang, lang === "fr" ? "Montant mensuel d’allègement, euros" : "Monthly relief amount, euros"), lang);
-
-    layout.height = 500;
-    layout.margin = {
-        l: 72,
-        r: 78,
-        t: 90,
-        b: 95
-    };
-
-    layout.xaxis.range = [0.95, 3.5];
-
-    layout.yaxis.ticksuffix = " €";
-
-    layout.yaxis2 = {
-        title: lang === "fr" ? "RGDU / salaire brut" : "RGDU / gross wage",
-        overlaying: "y",
-        side: "right",
-        ticksuffix: "%",
-        showgrid: false,
-        zeroline: false,
-        color: isDarkMode() ? "#e5e7eb" : COLORS.navy
-    };
-
-    layout.updatemenus = [
-        {
-            type: "buttons",
-            direction: "right",
-            x: 0,
-            y: 1.16,
-            xanchor: "left",
-            yanchor: "top",
-            buttons: [
+            const traces = [
                 {
-                    label: lang === "fr" ? "Mensuel" : "Monthly",
-                    method: "update",
-                    args: [
-                        {
-                            visible: [true, false, true]
-                        },
-                        {
-                            "yaxis.title.text": lang === "fr" ? "Montant mensuel d’allègement, euros" : "Monthly relief amount, euros"
-                        }
-                    ]
+                    x: rows.map(row => num(row.smic_multiple)),
+                    y: rows.map(row => num(row.rgdu_monthly_eur_may)),
+                    mode: "lines",
+                    name: lang === "fr" ? "Avant réforme — mai 2026" : "Before reform — May 2026",
+                    line: {
+                        color: COLORS.blue,
+                        width: 3
+                    },
+                    customdata: rows.map(row => [
+                        num(row.rgdu_monthly_eur_may),
+                        num(row.rgdu_monthly_eur_june),
+                        num(row.delta_rgdu_eur)
+                    ]),
+                    hovertemplate:
+                        "<b>%{x:.2f}× SMIC</b><br>" +
+                        (lang === "fr" ? "RGDU mai 2026" : "May 2026 RGDU") + ": %{customdata[0]:,.0f} €<br>" +
+                        (lang === "fr" ? "RGDU juin 2026" : "June 2026 RGDU") + ": %{customdata[1]:,.0f} €<br>" +
+                        (lang === "fr" ? "Variation" : "Change") + ": %{customdata[2]:,.0f} €" +
+                        "<extra></extra>",
+                    type: "scatter"
                 },
                 {
-                    label: lang === "fr" ? "Annuel" : "Annual",
-                    method: "update",
-                    args: [
-                        {
-                            visible: [false, true, true]
-                        },
-                        {
-                            "yaxis.title.text": lang === "fr" ? "Montant annuel d’allègement, euros" : "Annual relief amount, euros"
-                        }
-                    ]
+                    x: rows.map(row => num(row.smic_multiple)),
+                    y: rows.map(row => num(row.rgdu_monthly_eur_june)),
+                    mode: "lines",
+                    name: lang === "fr" ? "Après réforme — juin 2026" : "After reform — June 2026",
+                    line: {
+                        color: COLORS.red,
+                        width: 3
+                    },
+                    customdata: rows.map(row => [
+                        num(row.rgdu_monthly_eur_may),
+                        num(row.rgdu_monthly_eur_june),
+                        num(row.delta_rgdu_eur)
+                    ]),
+                    hovertemplate:
+                        "<b>%{x:.2f}× SMIC</b><br>" +
+                        (lang === "fr" ? "RGDU mai 2026" : "May 2026 RGDU") + ": %{customdata[0]:,.0f} €<br>" +
+                        (lang === "fr" ? "RGDU juin 2026" : "June 2026 RGDU") + ": %{customdata[1]:,.0f} €<br>" +
+                        (lang === "fr" ? "Variation" : "Change") + ": %{customdata[2]:,.0f} €" +
+                        "<extra></extra>",
+                    type: "scatter"
                 }
-            ],
-            showactive: true,
-            bgcolor: isDarkMode() ? "#111827" : "#ffffff",
-            bordercolor: isDarkMode() ? "#374151" : "#e5e7eb",
-            borderwidth: 1,
-            font: {
-                color: isDarkMode() ? "#e5e7eb" : COLORS.navy,
-                size: 12
-            }
+            ];
+
+            const layout = baseLayout(
+    		lang,
+    		lang === "fr"
+        		? "Montant mensuel d’allègement, euros"
+        		: "Monthly relief amount, euros"
+	    );
+
+            layout.height = 500;
+            layout.margin = {
+                l: 72,
+                r: 42,
+                t: 60,
+                b: 95
+            };
+
+            layout.xaxis.range = [0.95, 3.5];
+            layout.yaxis.ticksuffix = " €";
+            layout.legend.y = -0.22;
+
+            plot("chart-rgdu-" + lang, traces, layout);
+        },
+        error: function(error) {
+            console.error("RGDU reform CSV loading error:", error);
         }
-    ];
+    });
+}
 
-    layout.legend.y = -0.22;
+function renderRgduDeltaChart(data, lang) {
+    Papa.parse("data/rgdu_reform_june_2026.csv", {
+        download: true,
+        header: true,
+        dynamicTyping: true,
+        complete: function(results) {
+            const rows = results.data
+                .filter(row => row && row.smic_multiple !== null && row.smic_multiple !== undefined)
+                .filter(row => num(row.smic_multiple) >= 1.0)
+                .sort((a, b) => num(a.smic_multiple) - num(b.smic_multiple));
 
-    plot("chart-rgdu-" + lang, traces, layout);
+            const traces = [
+                {
+                    x: rows.map(row => num(row.smic_multiple)),
+                    y: rows.map(row => num(row.delta_rgdu_eur)),
+                    mode: "lines",
+                    name: lang === "fr" ? "Variation juin - mai" : "June - May change",
+                    line: {
+                        color: COLORS.red,
+                        width: 3
+                    },
+                    fill: "tozeroy",
+                    fillcolor: "rgba(220, 38, 38, 0.12)",
+                    customdata: rows.map(row => [
+                        num(row.rgdu_monthly_eur_may),
+                        num(row.rgdu_monthly_eur_june),
+                        num(row.delta_rgdu_eur)
+                    ]),
+                    hovertemplate:
+                        "<b>%{x:.2f}× SMIC</b><br>" +
+                        (lang === "fr" ? "RGDU mai 2026" : "May 2026 RGDU") + ": %{customdata[0]:,.0f} €<br>" +
+                        (lang === "fr" ? "RGDU juin 2026" : "June 2026 RGDU") + ": %{customdata[1]:,.0f} €<br>" +
+                        (lang === "fr" ? "Variation" : "Change") + ": %{customdata[2]:,.0f} €" +
+                        "<extra></extra>",
+                    type: "scatter"
+                }
+            ];
+
+            const layout = baseLayout(
+                lang,
+                lang === "fr"
+                    ? "Variation mensuelle de RGDU, euros"
+                    : "Monthly RGDU change, euros"
+            );
+
+            layout.height = 500;
+            layout.margin = {
+                l: 72,
+                r: 42,
+                t: 90,
+                b: 95
+            };
+            layout.xaxis.range = [0.95, 3.5];
+            layout.yaxis.ticksuffix = " €";
+
+            layout.shapes = layout.shapes || [];
+            layout.shapes.push({
+                type: "line",
+                xref: "paper",
+                yref: "y",
+                x0: 0,
+                x1: 1,
+                y0: 0,
+                y1: 0,
+                line: {
+                    color: COLORS.gray,
+                    dash: "dash",
+                    width: 1.5
+                }
+            });
+
+            plot("chart-rgdu-delta-" + lang, traces, layout);
+        },
+        error: function(error) {
+            console.error("RGDU reform CSV loading error:", error);
+        }
+    });
 }
 
 function renderWedgeChart(data, lang) {
@@ -504,7 +565,13 @@ function renderWedgeChart(data, lang) {
         }
     ];
 
-    const layout = addRgduZone(baseLayout(lang, t.social_wedge), lang);
+    const rgduZone = getRgduZoneFromData(DATA);
+    const layout = addRgduZone(
+    baseLayout(lang, t.social_wedge),
+    	lang,
+    	rgduZone.x0,
+    	rgduZone.x1
+    );
     layout.yaxis.ticksuffix = "%";
 
     plot("chart-wedge-" + lang, traces, layout);
@@ -527,7 +594,13 @@ function renderRatioChart(data, lang) {
         }
     ];
 
-    const layout = addRgduZone(baseLayout(lang, t.cost_net_ratio), lang);
+    const rgduZone = getRgduZoneFromData(data);
+    const layout = addRgduZone(
+    baseLayout(lang, t.cost_net_ratio),
+    	lang,
+    	rgduZone.x0,
+    	rgduZone.x1
+    );
 
     plot("chart-ratio-" + lang, traces, layout);
 }
@@ -577,7 +650,14 @@ function renderMarginalChart(data, lang) {
         }
     ];
 
-    const layout = addRgduZone(baseLayout(lang, t.y_rate), lang);
+    const rgduZone = getRgduZoneFromData(data);
+    const layout = addRgduZone(
+    baseLayout(lang, t.y_rate),
+    	lang,
+    	rgduZone.x0,
+    	rgduZone.x1
+    );
+
     layout.height = 500;
     layout.margin.b = 105;
     layout.yaxis.ticksuffix = "%";
@@ -644,7 +724,13 @@ function renderTotalLevyChart(data, lang) {
         }
     ];
 
-    const layout = addRgduZone(baseLayout(lang, lang === "fr" ? "Cotisations / salaire brut" : "Contributions / gross wage"), lang);
+    const rgduZone = getRgduZoneFromData(data);
+    const layout = addRgduZone(
+    baseLayout(lang, lang === "fr" ? "Cotisations / salaire brut" : "Contributions / gross wage"),
+    	lang,
+    	rgduZone.x0,
+    	rgduZone.x1
+    );
     layout.yaxis.ticksuffix = "%";
 
     plot("chart-total-levy-" + lang, traces, layout);
@@ -1233,7 +1319,13 @@ function renderDecompositionChart(data, lang) {
         }
     ];
 
-    const layout = baseLayout(lang, t.y_amount);
+    const rgduZone = getRgduZoneFromData(data);
+    const layout = addRgduZone(
+    baseLayout(lang, t.y_amount),
+    	lang,
+    	rgduZone.x0,
+    	rgduZone.x1
+    );
 
     layout.barmode = "stack";
     layout.height = 470;
@@ -1331,6 +1423,7 @@ function renderSimulation(lang = getActiveLanguage()) {
     renderCostChart(data, lang);
     renderEmployerRateChart(data, lang);
     renderRgduChart(data, lang);
+    renderRgduDeltaChart(data, lang);
     renderWedgeChart(data, lang);
     renderRatioChart(data, lang);
     renderMarginalChart(data, lang);
@@ -1508,7 +1601,13 @@ function renderAtmpComparisonLevel(lang) {
         };
     }).filter(trace => trace.x.length > 0);
 
-    const layout = addRgduZone(baseLayout(lang, t.y_amount), lang);
+    const rgduZone = getRgduZoneFromData(DATA);
+    const layout = addRgduZone(
+    baseLayout(lang, t.y_amount),
+    	lang,
+    	rgduZone.x0,
+    	rgduZone.x1
+    );
     layout.height = 460;
     layout.margin.b = 95;
     layout.yaxis.ticksuffix = " €";
@@ -1593,7 +1692,13 @@ function renderAtmpComparisonGap(lang) {
         };
     }).filter(trace => trace.x.length > 0);
 
-    const layout = addRgduZone(baseLayout(lang, lang === "fr" ? "Écart de coût employeur" : "Employer cost gap"), lang);
+    const rgduZone = getRgduZoneFromData(standardData);
+    const layout = addRgduZone(
+    baseLayout(lang, lang === "fr" ? "Écart de coût employeur" : "Employer cost gap"),
+    	lang,
+    	rgduZone.x0,
+    	rgduZone.x1
+    );
     layout.height = 460;
     layout.margin.b = 95;
     layout.yaxis.ticksuffix = " €";
@@ -1661,7 +1766,13 @@ function renderStatusComparisonLevel(lang) {
         };
     }).filter(trace => trace.x.length > 0);
 
-    const layout = addRgduZone(baseLayout(lang, t.y_amount), lang);
+    const rgduZone = getRgduZoneFromData(DATA);
+    const layout = addRgduZone(
+    	baseLayout(lang, t.y_amount),
+    	lang,
+    	rgduZone.x0,
+    	rgduZone.x1
+    );
     layout.height = 460;
     layout.margin.b = 95;
     layout.yaxis.ticksuffix = " €";
@@ -1742,12 +1853,15 @@ function renderStatusComparisonGap(lang) {
         }
     ];
 
+    const rgduZone = getRgduZoneFromData(nonCadreData);
     const layout = addRgduZone(
-        baseLayout(
-            lang,
-            lang === "fr" ? "Écart de coût employeur" : "Employer cost gap"
-        ),
-        lang
+    	baseLayout(
+        	lang,
+        	lang === "fr" ? "Écart de coût employeur" : "Employer cost gap"
+    	),
+    	lang,
+    	rgduZone.x0,
+    	rgduZone.x1
     );
 
     layout.height = 460;

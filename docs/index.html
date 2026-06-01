@@ -8,7 +8,7 @@
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
-        gtag('config', 'G-F430KVB7BT');
+        gtag('config', 'G-N46D6NCQJ9');
     </script>
     <title>French Labour Cost Lab</title>
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
@@ -98,9 +98,15 @@
                 </div>
 
                 <div class="chart-card">
-                    <h3>General degressive employer contribution reduction (RGDU) — 2026</h3>
-                    <p class="chart-subtitle">Monthly or annual amount of the general degressive employer contribution reduction computed directly by the Mon-entreprise / URSSAF API.</p>
+                    <h3>Employer contribution reliefs (RGDU) – before and after the 1 June 2026 reform</h3>
+                    <p class="chart-subtitle">Monthly relief amount retrieved directly from the Mon-entreprise / URSSAF API.</p>
                     <div id="chart-rgdu-en" class="plotly-chart lazy-chart"></div>
+                </div>
+
+                <div class="chart-card">
+                    <h3>Impact of the 1 June 2026 reform on contribution reliefs</h3>
+                    <p class="chart-subtitle">Monthly change in RGDU after the June 2026 SMIC increase and the freezing of relief parameters. Exploratory simulation based on currently available Mon-entreprise / URSSAF outputs.</p>
+                    <div id="chart-rgdu-delta-en" class="plotly-chart lazy-chart"></div>
                 </div>
 
                 <div class="chart-card">
@@ -803,7 +809,7 @@
         </main>
 
         <footer>
-    		Last updated: 2026-06-01 09:52
+    		Last updated: 2026-06-01 14:11
     		· Paramètres réglementaires: 2026-05
     		· Date d’effet: 2026-05-01
         </footer>
@@ -890,9 +896,15 @@
                 </div>
 
                 <div class="chart-card">
-                    <h3>Réduction générale dégressive unique (RGDU) — 2026</h3>
-                    <p class="chart-subtitle">Montant mensuel ou annuel de réduction générale dégressive unique récupéré directement depuis l’API Mon-entreprise / URSSAF.</p>
+                    <h3>Allègements de cotisations (RGDU) – avant et après la réforme du 1er juin 2026</h3>
+                    <p class="chart-subtitle">Montant mensuel d’allègement récupéré directement depuis l’API Mon-entreprise / URSSAF.</p>
                     <div id="chart-rgdu-fr" class="plotly-chart lazy-chart"></div>
+                </div>
+
+                <div class="chart-card">
+                    <h3>Impact de la réforme du 1er juin 2026 sur les allègements</h3>
+                    <p class="chart-subtitle">Variation mensuelle de RGDU après la hausse du SMIC et le gel des paramètres d’allègement. Simulation exploratoire à partir des sorties Mon-entreprise / URSSAF disponibles.</p>
+                    <div id="chart-rgdu-delta-fr" class="plotly-chart lazy-chart"></div>
                 </div>
 
                 <div class="chart-card">
@@ -1595,7 +1607,7 @@
         </main>
 
         <footer>
-    		Dernière mise à jour: 2026-06-01 09:52
+    		Dernière mise à jour: 2026-06-01 14:11
     		· Paramètres réglementaires: 2026-05
     		· Date d’effet: 2026-05-01
         </footer>

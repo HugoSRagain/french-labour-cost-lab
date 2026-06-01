@@ -3,7 +3,7 @@ from pathlib import Path
 
 PROFILE = "non_cadre__standard__standard"
 
-MAY_PATH = Path("archive/labour_cost_grid_2026_05.csv")
+MAY_PATH = Path("archive/labour_cost_grid_2026_05_corrected.csv")
 JUNE_PATH = Path("docs/data/labour_cost_grid_mon_entreprise.csv")
 OUT_PATH = Path("docs/data/rgdu_reform_june_2026.csv")
 
