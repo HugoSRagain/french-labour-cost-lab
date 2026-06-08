@@ -1,42 +1,43 @@
 {
-  "version": "2026-06-draft",
-  "country": "FR",
-  "effective_from": "2026-06-01",
-  "last_updated": "2026-05-25",
-  "status": "draft_not_yet_active"
-  "description": "Parameter file used to document the regulatory assumptions of the French Labour Cost Lab.",
+"version": "2026-06",
+"country": "FR",
+"effective_from": "2026-06-01",
+"effective_date": "2026-06-01",
+"last_updated": "2026-06-08",
+"status": "active",
+"description": "Parameter file documenting the regulatory assumptions used by the French Labour Cost Lab.",
 
-  "smic": {
-    "gross_hourly_eur": null,
-    "gross_monthly_35h_eur": null,
-    "source": "À compléter"
-  },
+"smic": {
+"gross_hourly_eur": 12.31,
+"gross_monthly_35h_eur": 1867.02,
+"source": "Arrêté du 22 mai 2026 relatif au relèvement du salaire minimum de croissance, applicable au 1er juin 2026"
+},
 
-  "reliefs": {
-    "rgdu_2026": {
-      "status": "current_before_june_update",
-      "threshold_reference": "current_smic",
-      "comment": "À mettre à jour au 1er juin 2026 si le SMIC augmente et si les paramètres d’allègements sont gelés."
-    }
-  },
+"reliefs": {
+"rgdu_2026": {
+"status": "june_2026_freeze",
+"threshold_reference": "smic_before_june_2026",
+"comment": "The reduction générale dégressive unique thresholds remain indexed to the pre-June 2026 SMIC despite the June 2026 increase in the statutory minimum wage."
+}
+},
 
-  "pmss": {
-    "monthly_eur": null,
-    "source": "À compléter"
-  },
+"pmss": {
+"monthly_eur": null,
+"source": "À compléter"
+},
 
-  "atmp": {
-    "scenarios": {
-      "standard": null,
-      "atmp_1": 0.01,
-      "atmp_4": 0.04,
-      "fonctions_support": null
-    }
-  },
+"atmp": {
+"scenarios": {
+"standard": null,
+"atmp_1": 0.01,
+"atmp_4": 0.04,
+"fonctions_support": null
+}
+},
 
-  "notes": [
-    "Ce fichier documente les paramètres réglementaires associés aux simulations.",
-    "Les calculs restent produits par l’API Mon-entreprise / URSSAF.",
-    "Les valeurs null doivent être complétées ou vérifiées avant usage comme source de vérité."
-  ]
+"notes": [
+"This file documents the regulatory assumptions associated with the simulations.",
+"All calculations continue to be produced by the Mon-entreprise / URSSAF API.",
+"The June 2026 version incorporates the SMIC increase and the freeze of employer contribution relief thresholds."
+]
 }

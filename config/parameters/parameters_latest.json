@@ -1,9 +1,10 @@
 {
-  "version": "2026-05",
+  "version": "2026-06",
   "country": "FR",
-  "effective_from": "2026-05-01",
-  "last_updated": "2026-05-25",
-  "status": "experimental",
+  "effective_from": "2026-06-01",
+  "effective_date": "2026-06-01",
+  "last_updated": "2026-06-08",
+  "status": "active",
   "description": "Parameter file used to document the regulatory assumptions of the French Labour Cost Lab.",
 
   "smic": {
