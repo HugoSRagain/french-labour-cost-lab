@@ -28,13 +28,17 @@
                     Prototype de simulation du coût du travail, du salaire net avant impôt
                     et des cotisations sociales en Allemagne.
                 </p>
-                <p class="author-line">Par Hugo Spring-Ragain, Économiste, CEDS Paris</p>
+                <p class="author-line">
+                    Par Hugo Spring-Ragain, Économiste, CEDS Paris
+                </p>
             </div>
         </header>
 
         <main>
             <section>
-                <div class="badge">Prototype Allemagne · Paramètres 2026</div>
+                <div class="badge">
+                    Prototype Allemagne · Paramètres 2026
+                </div>
 
                 <h2>Objectif</h2>
 
@@ -47,10 +51,32 @@
 
                 <div class="method-box">
                     <strong>Note méthodologique.</strong>
-                    Cette version est volontairement simplifiée. Elle modélise un salarié standard
-                    affilié à l’assurance publique, sans enfant, hors Saxe. L’impôt sur le revenu,
-                    les mini-jobs, les midi-jobs, les caisses maladie particulières et les situations
-                    familiales seront intégrés dans une version ultérieure.
+                    Cette version ne repose pas sur une API publique équivalente à Mon-entreprise.
+                    Elle utilise une simulation réglementaire construite à partir des paramètres
+                    allemands de sécurité sociale pour 2026. Le salaire net affiché correspond
+                    au salaire net avant impôt sur le revenu.
+                </div>
+            </section>
+
+            <section>
+                <h2>Profil simulé</h2>
+
+                <div class="profile-selector profile-selector-grid">
+                    <div class="selector-field">
+                        <label for="germany-profile-select">
+                            Profil Allemagne
+                        </label>
+
+                        <select id="germany-profile-select">
+                            <option value="germany__public_health__with_children__outside_saxony" selected>
+                                Assurance publique · avec enfant · hors Saxe
+                            </option>
+
+                            <option value="germany__public_health__childless__outside_saxony">
+                                Assurance publique · sans enfant · hors Saxe
+                            </option>
+                        </select>
+                    </div>
                 </div>
             </section>
 
@@ -59,23 +85,39 @@
 
                 <div class="metrics-grid">
                     <div class="metric-card">
-                        <div class="metric-label">Salaire net avant impôt à 1 salaire minimum</div>
-                        <div class="metric-value" id="germany-net-smic">—</div>
+                        <div class="metric-label">
+                            Salaire net avant impôt à 1 salaire minimum
+                        </div>
+                        <div class="metric-value" id="germany-net-minimum">
+                            —
+                        </div>
                     </div>
 
                     <div class="metric-card">
-                        <div class="metric-label">Coût employeur à 1 salaire minimum</div>
-                        <div class="metric-value" id="germany-cost-smic">—</div>
+                        <div class="metric-label">
+                            Coût employeur à 1 salaire minimum
+                        </div>
+                        <div class="metric-value" id="germany-cost-minimum">
+                            —
+                        </div>
                     </div>
 
                     <div class="metric-card">
-                        <div class="metric-label">Taux employeur apparent à 1 salaire minimum</div>
-                        <div class="metric-value" id="germany-employer-rate">—</div>
+                        <div class="metric-label">
+                            Taux employeur apparent à 1 salaire minimum
+                        </div>
+                        <div class="metric-value" id="germany-employer-rate">
+                            —
+                        </div>
                     </div>
 
                     <div class="metric-card">
-                        <div class="metric-label">Ratio coût/net à 2 salaires minimums</div>
-                        <div class="metric-value" id="germany-cost-net-ratio">—</div>
+                        <div class="metric-label">
+                            Ratio coût/net à 2 salaires minimums
+                        </div>
+                        <div class="metric-value" id="germany-cost-net-ratio">
+                            —
+                        </div>
                     </div>
                 </div>
             </section>
@@ -113,10 +155,47 @@
                     <div class="chart-card">
                         <h3>Décomposition à 2 salaires minimums</h3>
                         <p class="chart-subtitle">
-                            Décomposition simplifiée du coût du travail allemand.
+                            Décomposition simplifiée du coût du travail allemand
+                            au niveau de 2 salaires minimums de référence.
                         </p>
                         <div id="chart-germany-decomposition" class="plotly-chart"></div>
                     </div>
+
+                    <div class="chart-card chart-card-full">
+                        <h3>Décomposition des cotisations sociales</h3>
+                        <p class="chart-subtitle">
+                            Comparaison des cotisations salarié et employeur par branche
+                            au niveau de 2 salaires minimums de référence.
+                        </p>
+                        <div id="chart-germany-breakdown" class="plotly-chart"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2>Données</h2>
+
+                <p class="interpretation">
+                    Le jeu de données allemand est généré à partir du fichier de paramètres
+                    2026 et contient deux profils : avec enfant hors Saxe et sans enfant hors Saxe.
+                </p>
+
+                <div class="download-row" style="margin-top: 18px;">
+                    <a
+                        class="download-link"
+                        href="../../data/germany/germany_labour_cost_grid_2026.csv"
+                        download
+                    >
+                        ⬇ Télécharger le jeu de données Allemagne
+                    </a>
+
+                    <a
+                        class="download-link"
+                        href="../../data/germany/germany_parameters_2026_01.json"
+                        download
+                    >
+                        ⬇ Télécharger les paramètres 2026
+                    </a>
                 </div>
             </section>
 
@@ -128,30 +207,43 @@
                         <strong>Salaire minimum.</strong>
                         Le salaire minimum horaire retenu est de 13,90 € en 2026.
                     </li>
+
                     <li>
-                        <strong>Durée mensuelle.</strong>
-                        La simulation retient 173,33 heures mensuelles, soit 40 heures hebdomadaires annualisées.
+                        <strong>Convention mensuelle.</strong>
+                        Le salaire minimum mensuel de référence est calculé à partir
+                        d’une convention de 40 heures hebdomadaires, soit 173,33 heures
+                        par mois.
                     </li>
+
                     <li>
-                        <strong>Assurance retraite.</strong>
-                        Taux total de 18,6 %, partagé à parts égales entre salarié et employeur.
+                        <strong>Net affiché.</strong>
+                        Le salaire net correspond au salaire après cotisations salarié,
+                        mais avant impôt sur le revenu.
                     </li>
-                    <li>
-                        <strong>Assurance chômage.</strong>
-                        Taux total de 2,6 %, partagé à parts égales.
-                    </li>
+
                     <li>
                         <strong>Assurance maladie.</strong>
-                        Taux général de 14,6 %, auquel s’ajoute une contribution complémentaire de référence.
+                        La simulation retient le taux général et une contribution
+                        additionnelle moyenne de référence.
                     </li>
+
                     <li>
                         <strong>Dépendance.</strong>
-                        La simulation retient un salarié sans enfant, hors Saxe.
+                        Deux profils sont simulés : salarié avec enfant hors Saxe et
+                        salarié sans enfant hors Saxe.
                     </li>
+
                     <li>
-                        <strong>Limite.</strong>
-                        Cette V1 ne calcule pas encore l’impôt sur le revenu allemand.
-                        Le salaire net affiché est donc un net avant impôt.
+                        <strong>Plafonds.</strong>
+                        Les cotisations santé/dépendance et retraite/chômage sont
+                        plafonnées selon les valeurs réglementaires 2026.
+                    </li>
+
+                    <li>
+                        <strong>Limites.</strong>
+                        Les mini-jobs, midi-jobs, l’assurance privée, l’impôt sur le revenu,
+                        la Kirchensteuer, le Solidaritätszuschlag, l’assurance accident et
+                        les conventions collectives sont exclus de cette V1.
                     </li>
                 </ul>
             </section>

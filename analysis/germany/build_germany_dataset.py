@@ -1,90 +1,101 @@
 from pathlib import Path
-import pandas as pd
+import json
+
 import numpy as np
+import pandas as pd
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-OUTPUT_DIR = BASE_DIR / "docs" / "data" / "germany"
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+PARAMETERS_PATH = (
+    BASE_DIR
+    / "docs"
+    / "data"
+    / "germany"
+    / "germany_parameters_2026_01.json"
+)
+
+OUTPUT_PATH = (
+    BASE_DIR
+    / "docs"
+    / "data"
+    / "germany"
+    / "germany_labour_cost_grid_2026.csv"
+)
 
 
-PARAMETERS = {
-    "version": "2026-01",
-    "effective_from": "2026-01-01",
-    "country": "Germany",
-    "minimum_wage_hourly_eur": 13.90,
-    "monthly_hours": 173.33,
-
-    # Contribution ceilings, monthly euros, 2026.
-    "health_care_ceiling_monthly_eur": 5812.50,
-    "pension_unemployment_ceiling_monthly_eur": 8450.00,
-
-    # Statutory / reference rates.
-    "pension_total_rate": 0.186,
-    "pension_employee_rate": 0.093,
-    "pension_employer_rate": 0.093,
-
-    "unemployment_total_rate": 0.026,
-    "unemployment_employee_rate": 0.013,
-    "unemployment_employer_rate": 0.013,
-
-    "health_general_total_rate": 0.146,
-    "health_general_employee_rate": 0.073,
-    "health_general_employer_rate": 0.073,
-
-    # Reference Zusatzbeitrag assumption.
-    # V1 convention: average additional contribution, split equally.
-    "health_additional_total_rate": 0.029,
-    "health_additional_employee_rate": 0.0145,
-    "health_additional_employer_rate": 0.0145,
-
-    # Long-term care insurance.
-    # V1 convention: employee without children, outside Saxony.
-    "care_employee_rate": 0.024,
-    "care_employer_rate": 0.018,
-}
+def load_parameters() -> dict:
+    with PARAMETERS_PATH.open("r", encoding="utf-8") as file:
+        return json.load(file)
 
 
 def cap_base(gross_monthly_eur: float, ceiling_monthly_eur: float) -> float:
     return min(gross_monthly_eur, ceiling_monthly_eur)
 
 
-def compute_row(smic_multiple: float) -> dict:
-    monthly_minimum_wage = (
-        PARAMETERS["minimum_wage_hourly_eur"]
-        * PARAMETERS["monthly_hours"]
-    )
+def compute_row(
+    smic_multiple: float,
+    profile: dict,
+    parameters: dict
+) -> dict:
+    minimum_wage_hourly = parameters["minimum_wage"]["hourly_eur"]
+    monthly_hours = parameters["working_time_convention"]["monthly_hours"]
 
+    monthly_minimum_wage = minimum_wage_hourly * monthly_hours
     gross = monthly_minimum_wage * smic_multiple
 
-    health_base = cap_base(
+    ceilings = parameters["contribution_ceilings"]
+    rates = parameters["rates"]
+
+    health_care_base = cap_base(
         gross,
-        PARAMETERS["health_care_ceiling_monthly_eur"]
+        ceilings["health_and_care_monthly_eur"]
     )
 
-    pension_base = cap_base(
+    pension_unemployment_base = cap_base(
         gross,
-        PARAMETERS["pension_unemployment_ceiling_monthly_eur"]
+        ceilings["pension_and_unemployment_monthly_eur"]
     )
 
-    employee_pension = pension_base * PARAMETERS["pension_employee_rate"]
-    employer_pension = pension_base * PARAMETERS["pension_employer_rate"]
-
-    employee_unemployment = pension_base * PARAMETERS["unemployment_employee_rate"]
-    employer_unemployment = pension_base * PARAMETERS["unemployment_employer_rate"]
-
-    employee_health = health_base * (
-        PARAMETERS["health_general_employee_rate"]
-        + PARAMETERS["health_additional_employee_rate"]
+    employee_pension = (
+        pension_unemployment_base
+        * rates["pension_employee"]
     )
 
-    employer_health = health_base * (
-        PARAMETERS["health_general_employer_rate"]
-        + PARAMETERS["health_additional_employer_rate"]
+    employer_pension = (
+        pension_unemployment_base
+        * rates["pension_employer"]
     )
 
-    employee_care = health_base * PARAMETERS["care_employee_rate"]
-    employer_care = health_base * PARAMETERS["care_employer_rate"]
+    employee_unemployment = (
+        pension_unemployment_base
+        * rates["unemployment_employee"]
+    )
+
+    employer_unemployment = (
+        pension_unemployment_base
+        * rates["unemployment_employer"]
+    )
+
+    employee_health = health_care_base * (
+        rates["health_general_employee"]
+        + rates["health_additional_employee_reference"]
+    )
+
+    employer_health = health_care_base * (
+        rates["health_general_employer"]
+        + rates["health_additional_employer_reference"]
+    )
+
+    employee_care = (
+        health_care_base
+        * profile["care_employee_rate"]
+    )
+
+    employer_care = (
+        health_care_base
+        * profile["care_employer_rate"]
+    )
 
     employee_contributions = (
         employee_pension
@@ -105,13 +116,15 @@ def compute_row(smic_multiple: float) -> dict:
     social_wedge = employer_cost - net_before_income_tax
 
     return {
-        "country": "Germany",
-        "profile_id": "germany__standard__public_health__no_children__outside_saxony",
-        "parameter_version": PARAMETERS["version"],
-        "effective_from": PARAMETERS["effective_from"],
+        "country": parameters["country"],
+        "profile_id": profile["profile_id"],
+        "profile_label_fr": profile["label_fr"],
+        "profile_label_en": profile["label_en"],
+        "parameter_version": parameters["version"],
+        "effective_from": parameters["effective_from"],
 
-        "minimum_wage_hourly_eur": PARAMETERS["minimum_wage_hourly_eur"],
-        "monthly_hours": PARAMETERS["monthly_hours"],
+        "minimum_wage_hourly_eur": minimum_wage_hourly,
+        "monthly_reference_hours": monthly_hours,
         "monthly_minimum_wage_eur": monthly_minimum_wage,
 
         "smic_multiple": round(smic_multiple, 2),
@@ -131,6 +144,9 @@ def compute_row(smic_multiple: float) -> dict:
         "employer_unemployment_monthly_eur": employer_unemployment,
         "employer_health_monthly_eur": employer_health,
         "employer_care_monthly_eur": employer_care,
+
+        "health_care_base_monthly_eur": health_care_base,
+        "pension_unemployment_base_monthly_eur": pension_unemployment_base,
 
         "social_wedge_monthly_eur": social_wedge,
 
@@ -157,26 +173,81 @@ def compute_row(smic_multiple: float) -> dict:
     }
 
 
-def build_dataset() -> pd.DataFrame:
-    wage_grid = np.round(np.arange(0.80, 6.00 + 0.001, 0.01), 2)
-    rows = [compute_row(smic_multiple) for smic_multiple in wage_grid]
+def build_dataset(parameters: dict) -> pd.DataFrame:
+    wage_grid = np.round(
+        np.arange(0.80, 6.00 + 0.001, 0.01),
+        2
+    )
+
+    rows = []
+
+    for profile in parameters["profiles"]:
+        for smic_multiple in wage_grid:
+            rows.append(
+                compute_row(
+                    smic_multiple=smic_multiple,
+                    profile=profile,
+                    parameters=parameters
+                )
+            )
+
     return pd.DataFrame(rows)
 
 
-def main() -> None:
-    dataset = build_dataset()
+def print_quality_checks(dataset: pd.DataFrame) -> None:
+    print()
+    print("Quality checks")
 
-    output_path = OUTPUT_DIR / "germany_labour_cost_grid_2026.csv"
-    dataset.to_csv(output_path, index=False, encoding="utf-8")
+    expected_rows = 521 * dataset["profile_id"].nunique()
+    actual_rows = len(dataset)
 
-    print("Germany dataset created.")
-    print(f"Rows: {len(dataset)}")
-    print(f"Output: {output_path}")
+    print(f"Profiles: {dataset['profile_id'].nunique()}")
+    print(f"Rows: {actual_rows}")
+    print(f"Expected rows: {expected_rows}")
 
+    if actual_rows != expected_rows:
+        raise ValueError(
+            f"Unexpected number of rows: {actual_rows}, expected {expected_rows}"
+        )
+
+    check_net = (
+        dataset["gross_monthly_eur"]
+        - dataset["employee_contributions_monthly_eur"]
+        - dataset["net_before_income_tax_monthly_eur"]
+    ).abs().max()
+
+    check_cost = (
+        dataset["gross_monthly_eur"]
+        + dataset["employer_contributions_monthly_eur"]
+        - dataset["employer_cost_monthly_eur"]
+    ).abs().max()
+
+    check_wedge = (
+        dataset["employer_cost_monthly_eur"]
+        - dataset["net_before_income_tax_monthly_eur"]
+        - dataset["social_wedge_monthly_eur"]
+    ).abs().max()
+
+    print(f"Max net identity error: {check_net:.10f}")
+    print(f"Max employer cost identity error: {check_cost:.10f}")
+    print(f"Max social wedge identity error: {check_wedge:.10f}")
+
+    if check_net > 1e-8:
+        raise ValueError("Net wage identity check failed.")
+
+    if check_cost > 1e-8:
+        raise ValueError("Employer cost identity check failed.")
+
+    if check_wedge > 1e-8:
+        raise ValueError("Social wedge identity check failed.")
+
+
+def print_sample(dataset: pd.DataFrame) -> None:
     sample = dataset[
         dataset["smic_multiple"].isin([1.00, 2.00, 3.00, 6.00])
     ][
         [
+            "profile_id",
             "smic_multiple",
             "gross_monthly_eur",
             "net_before_income_tax_monthly_eur",
@@ -187,7 +258,27 @@ def main() -> None:
         ]
     ]
 
+    print()
+    print("Sample rows")
     print(sample.to_string(index=False))
+
+
+def main() -> None:
+    parameters = load_parameters()
+    dataset = build_dataset(parameters)
+
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    dataset.to_csv(
+        OUTPUT_PATH,
+        index=False,
+        encoding="utf-8"
+    )
+
+    print("Germany dataset created.")
+    print(f"Output: {OUTPUT_PATH}")
+
+    print_quality_checks(dataset)
+    print_sample(dataset)
 
 
 if __name__ == "__main__":

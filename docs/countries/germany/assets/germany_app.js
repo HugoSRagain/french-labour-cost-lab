@@ -20,7 +20,12 @@ function deNum(value) {
         return Number.isFinite(value) ? value : 0;
     }
 
-    const parsed = Number(String(value).replace(/\s/g, "").replace(",", "."));
+    const parsed = Number(
+        String(value)
+            .replace(/\s/g, "")
+            .replace(",", ".")
+    );
+
     return Number.isFinite(parsed) ? parsed : 0;
 }
 
@@ -32,6 +37,24 @@ function dePct(value) {
     return (deNum(value) * 100).toFixed(1).replace(".", ",") + " %";
 }
 
+function getGermanySelectedProfile() {
+    const select = document.getElementById("germany-profile-select");
+
+    if (!select) {
+        return "germany__public_health__with_children__outside_saxony";
+    }
+
+    return select.value;
+}
+
+function getGermanyProfileData() {
+    const profileId = getGermanySelectedProfile();
+
+    return GERMANY_DATA
+        .filter(row => row.profile_id === profileId)
+        .sort((a, b) => deNum(a.smic_multiple) - deNum(b.smic_multiple));
+}
+
 function germanyBaseLayout(yTitle) {
     return {
         template: "plotly_white",
@@ -40,7 +63,7 @@ function germanyBaseLayout(yTitle) {
             l: 72,
             r: 42,
             t: 48,
-            b: 80
+            b: 90
         },
         font: {
             family: "Arial",
@@ -53,7 +76,7 @@ function germanyBaseLayout(yTitle) {
         legend: {
             orientation: "h",
             yanchor: "top",
-            y: -0.18,
+            y: -0.20,
             xanchor: "center",
             x: 0.5,
             font: {
@@ -89,11 +112,54 @@ function germanyPlot(targetId, traces, layout) {
     });
 }
 
+function findGermanyClosestRow(data, targetMultiple) {
+    let closestRow = data[0];
+    let minDistance = Infinity;
+
+    data.forEach(row => {
+        const distance = Math.abs(
+            deNum(row.smic_multiple) - targetMultiple
+        );
+
+        if (distance < minDistance) {
+            closestRow = row;
+            minDistance = distance;
+        }
+    });
+
+    return closestRow;
+}
+
+function renderGermanyMetrics() {
+    const data = getGermanyProfileData();
+
+    if (!data.length) {
+        return;
+    }
+
+    const rowOne = findGermanyClosestRow(data, 1.00);
+    const rowTwo = findGermanyClosestRow(data, 2.00);
+
+    document.getElementById("germany-net-minimum").textContent =
+        deEuro(rowOne.net_before_income_tax_monthly_eur);
+
+    document.getElementById("germany-cost-minimum").textContent =
+        deEuro(rowOne.employer_cost_monthly_eur);
+
+    document.getElementById("germany-employer-rate").textContent =
+        dePct(rowOne.employer_contribution_rate);
+
+    document.getElementById("germany-cost-net-ratio").textContent =
+        deNum(rowTwo.cost_to_net_ratio).toFixed(2);
+}
+
 function renderGermanyCostChart() {
+    const data = getGermanyProfileData();
+
     const traces = [
         {
-            x: GERMANY_DATA.map(row => deNum(row.smic_multiple)),
-            y: GERMANY_DATA.map(row => deNum(row.gross_monthly_eur)),
+            x: data.map(row => deNum(row.smic_multiple)),
+            y: data.map(row => deNum(row.gross_monthly_eur)),
             mode: "lines",
             name: "Salaire brut",
             line: {
@@ -104,8 +170,8 @@ function renderGermanyCostChart() {
             type: "scatter"
         },
         {
-            x: GERMANY_DATA.map(row => deNum(row.smic_multiple)),
-            y: GERMANY_DATA.map(row => deNum(row.net_before_income_tax_monthly_eur)),
+            x: data.map(row => deNum(row.smic_multiple)),
+            y: data.map(row => deNum(row.net_before_income_tax_monthly_eur)),
             mode: "lines",
             name: "Salaire net avant impôt",
             line: {
@@ -115,8 +181,8 @@ function renderGermanyCostChart() {
             type: "scatter"
         },
         {
-            x: GERMANY_DATA.map(row => deNum(row.smic_multiple)),
-            y: GERMANY_DATA.map(row => deNum(row.employer_cost_monthly_eur)),
+            x: data.map(row => deNum(row.smic_multiple)),
+            y: data.map(row => deNum(row.employer_cost_monthly_eur)),
             mode: "lines",
             name: "Coût employeur",
             line: {
@@ -134,10 +200,12 @@ function renderGermanyCostChart() {
 }
 
 function renderGermanyContributionRateChart() {
+    const data = getGermanyProfileData();
+
     const traces = [
         {
-            x: GERMANY_DATA.map(row => deNum(row.smic_multiple)),
-            y: GERMANY_DATA.map(row => deNum(row.employee_contribution_rate) * 100),
+            x: data.map(row => deNum(row.smic_multiple)),
+            y: data.map(row => deNum(row.employee_contribution_rate) * 100),
             mode: "lines",
             name: "Taux salarié",
             line: {
@@ -147,8 +215,8 @@ function renderGermanyContributionRateChart() {
             type: "scatter"
         },
         {
-            x: GERMANY_DATA.map(row => deNum(row.smic_multiple)),
-            y: GERMANY_DATA.map(row => deNum(row.employer_contribution_rate) * 100),
+            x: data.map(row => deNum(row.smic_multiple)),
+            y: data.map(row => deNum(row.employer_contribution_rate) * 100),
             mode: "lines",
             name: "Taux employeur",
             line: {
@@ -166,10 +234,12 @@ function renderGermanyContributionRateChart() {
 }
 
 function renderGermanyWedgeChart() {
+    const data = getGermanyProfileData();
+
     const traces = [
         {
-            x: GERMANY_DATA.map(row => deNum(row.smic_multiple)),
-            y: GERMANY_DATA.map(row => deNum(row.social_wedge_rate) * 100),
+            x: data.map(row => deNum(row.smic_multiple)),
+            y: data.map(row => deNum(row.social_wedge_rate) * 100),
             mode: "lines",
             name: "Coin social",
             line: {
@@ -189,29 +259,23 @@ function renderGermanyWedgeChart() {
 }
 
 function renderGermanyDecompositionChart() {
-    const targetSmic = 2.00;
+    const data = getGermanyProfileData();
 
-    let row = GERMANY_DATA[0];
-    let minDistance = Infinity;
+    if (!data.length) {
+        return;
+    }
 
-    GERMANY_DATA.forEach(item => {
-        const distance = Math.abs(deNum(item.smic_multiple) - targetSmic);
-
-        if (distance < minDistance) {
-            row = item;
-            minDistance = distance;
-        }
-    });
+    const row = findGermanyClosestRow(data, 2.00);
 
     const labels = [
-        "Salaire brut",
+        "Salaire net avant impôt",
         "Cotisations salarié",
         "Cotisations employeur",
         "Coût employeur"
     ];
 
     const values = [
-        deNum(row.gross_monthly_eur),
+        deNum(row.net_before_income_tax_monthly_eur),
         deNum(row.employee_contributions_monthly_eur),
         deNum(row.employer_contributions_monthly_eur),
         deNum(row.employer_cost_monthly_eur)
@@ -226,8 +290,8 @@ function renderGermanyDecompositionChart() {
             textposition: "outside",
             marker: {
                 color: [
-                    GERMANY_COLORS.green,
                     GERMANY_COLORS.orange,
+                    GERMANY_COLORS.red,
                     GERMANY_COLORS.blue,
                     GERMANY_COLORS.purple
                 ]
@@ -248,25 +312,63 @@ function renderGermanyDecompositionChart() {
     germanyPlot("chart-germany-decomposition", traces, layout);
 }
 
-function renderGermanyMetrics() {
-    const rowOne = GERMANY_DATA.find(row => deNum(row.smic_multiple).toFixed(2) === "1.00");
-    const rowTwo = GERMANY_DATA.find(row => deNum(row.smic_multiple).toFixed(2) === "2.00");
+function renderGermanyContributionBreakdownChart() {
+    const data = getGermanyProfileData();
 
-    if (!rowOne || !rowTwo) {
+    if (!data.length) {
         return;
     }
 
-    document.getElementById("germany-net-smic").textContent =
-        deEuro(rowOne.net_before_income_tax_monthly_eur);
+    const row = findGermanyClosestRow(data, 2.00);
 
-    document.getElementById("germany-cost-smic").textContent =
-        deEuro(rowOne.employer_cost_monthly_eur);
+    const labels = [
+        "Retraite",
+        "Chômage",
+        "Maladie",
+        "Dépendance"
+    ];
 
-    document.getElementById("germany-employer-rate").textContent =
-        dePct(rowOne.employer_contribution_rate);
+    const employeeValues = [
+        deNum(row.employee_pension_monthly_eur),
+        deNum(row.employee_unemployment_monthly_eur),
+        deNum(row.employee_health_monthly_eur),
+        deNum(row.employee_care_monthly_eur)
+    ];
 
-    document.getElementById("germany-cost-net-ratio").textContent =
-        deNum(rowTwo.cost_to_net_ratio).toFixed(2);
+    const employerValues = [
+        deNum(row.employer_pension_monthly_eur),
+        deNum(row.employer_unemployment_monthly_eur),
+        deNum(row.employer_health_monthly_eur),
+        deNum(row.employer_care_monthly_eur)
+    ];
+
+    const traces = [
+        {
+            x: labels,
+            y: employeeValues,
+            name: "Salarié",
+            type: "bar",
+            marker: {
+                color: GERMANY_COLORS.orange
+            }
+        },
+        {
+            x: labels,
+            y: employerValues,
+            name: "Employeur",
+            type: "bar",
+            marker: {
+                color: GERMANY_COLORS.blue
+            }
+        }
+    ];
+
+    const layout = germanyBaseLayout("Montant mensuel à 2 salaires minimums, euros");
+    layout.barmode = "group";
+    layout.yaxis.ticksuffix = " €";
+    layout.xaxis.title = "";
+
+    germanyPlot("chart-germany-breakdown", traces, layout);
 }
 
 function renderGermany() {
@@ -275,9 +377,25 @@ function renderGermany() {
     renderGermanyContributionRateChart();
     renderGermanyWedgeChart();
     renderGermanyDecompositionChart();
+    renderGermanyContributionBreakdownChart();
+}
+
+function setupGermanyEvents() {
+    const profileSelect = document.getElementById("germany-profile-select");
+
+    if (profileSelect) {
+        profileSelect.addEventListener("change", function() {
+            renderGermany();
+        });
+    }
 }
 
 function loadGermanyData() {
+    if (typeof Papa === "undefined") {
+        console.error("PapaParse is not loaded.");
+        return;
+    }
+
     Papa.parse("../../data/germany/germany_labour_cost_grid_2026.csv", {
         download: true,
         header: true,
@@ -287,8 +405,13 @@ function loadGermanyData() {
                 .filter(row => row.profile_id)
                 .sort((a, b) => deNum(a.smic_multiple) - deNum(b.smic_multiple));
 
-            console.log("Germany Labour Cost Lab data loaded:", GERMANY_DATA.length, "rows");
+            console.log(
+                "Germany Labour Cost Lab data loaded:",
+                GERMANY_DATA.length,
+                "rows"
+            );
 
+            setupGermanyEvents();
             renderGermany();
         },
         error: function(error) {
