@@ -28,7 +28,13 @@ const TEXT = {
         decomp_effective_cost: "Coût employeur effectif",
         decomp_theoretical_cost: "Coût avant allègements",
         decomp_gross_wage: "Salaire brut",
-        rgdu_zone: "RGDU 2026<br>zone dégressive"
+        rgdu_zone: "RGDU 2026<br>zone dégressive",
+        flcl_e: "FLCL-E",
+        flcl_b: "FLCL-B",
+        flcl_r: "FLCL-R",
+        flcl_e_desc: "de salaire net pour 100 € de coût employeur",
+        flcl_b_desc: "du coût du travail absorbé par les prélèvements",
+        flcl_r_desc: "points d’efficacité créés par les allègements généraux"
     },
     en: {
         gross_wage: "Gross wage",
@@ -55,7 +61,13 @@ const TEXT = {
         decomp_effective_cost: "Effective employer cost",
         decomp_theoretical_cost: "Cost before reliefs",
         decomp_gross_wage: "Gross wage",
-        rgdu_zone: "RGDU 2026<br>degressive area"
+        rgdu_zone: "RGDU 2026<br>degressive area",
+        flcl_e: "FLCL-E",
+        flcl_b: "FLCL-B",
+        flcl_r: "FLCL-R",
+        flcl_e_desc: "of net wage for €100 of employer cost",
+        flcl_b_desc: "of labour cost absorbed by contributions",
+        flcl_r_desc: "efficiency points created by contribution reliefs"
     }
 };
 
@@ -131,6 +143,40 @@ function getSelectedProfile(lang) {
         atmp: atmpSelect ? atmpSelect.value : "standard",
         workingTime: workingTimeSelect ? workingTimeSelect.value : "full_time"
     };
+}
+
+function syncFlclSelectorsToSimulation(lang) {
+    const flclStatus = document.getElementById("flcl-status-select-" + lang);
+    const flclTerritory = document.getElementById("flcl-territory-select-" + lang);
+    const flclFirmSize = document.getElementById("flcl-firm-size-select-" + lang);
+    const flclAtmp = document.getElementById("flcl-atmp-select-" + lang);
+    const flclWorkingTime = document.getElementById("flcl-working-time-select-" + lang);
+
+    const statusSelect = document.getElementById("status-select-" + lang);
+    const territorySelect = document.getElementById("territory-select-" + lang);
+    const firmSizeSelect = document.getElementById("firm-size-select-" + lang);
+    const atmpSelect = document.getElementById("atmp-select-" + lang);
+    const workingTimeSelect = document.getElementById("working-time-select-" + lang);
+
+    if (flclStatus && statusSelect) {
+        statusSelect.value = flclStatus.value;
+    }
+
+    if (flclTerritory && territorySelect) {
+        territorySelect.value = flclTerritory.value;
+    }
+
+    if (flclFirmSize && firmSizeSelect) {
+        firmSizeSelect.value = flclFirmSize.value;
+    }
+
+    if (flclAtmp && atmpSelect) {
+        atmpSelect.value = flclAtmp.value;
+    }
+
+    if (flclWorkingTime && workingTimeSelect) {
+        workingTimeSelect.value = flclWorkingTime.value;
+    }
 }
 
 function getProfileData(lang) {
@@ -1786,6 +1832,517 @@ function renderDecompositionChart(data, lang) {
     plot("chart-decomposition-" + lang, traces, layout);
 }
 
+function getFlclSmicMultiple(row) {
+    return num(row.smic_multiple_etp ?? row.smic_multiple);
+}
+
+function findClosestSmicRow(data, targetSmic) {
+    if (!data || !data.length) {
+        return {};
+    }
+
+    let closestRow = data[0];
+    let minDistance = Infinity;
+
+    data.forEach(function(row) {
+        const distance = Math.abs(getFlclSmicMultiple(row) - targetSmic);
+
+        if (distance < minDistance) {
+            closestRow = row;
+            minDistance = distance;
+        }
+    });
+
+    return closestRow;
+}
+
+function computeFlclIndicators(row) {
+    const net = num(row.net_monthly_eur);
+    const employerCost = num(row.employer_cost_monthly_eur);
+    const rgdu = num(row.rgdu_monthly_eur);
+
+    const flclE = employerCost > 0 ? 100 * net / employerCost : 0;
+    const flclB = 100 - flclE;
+
+    const costWithoutRgdu = employerCost + rgdu;
+    const flclEWithoutRgdu = costWithoutRgdu > 0 ? 100 * net / costWithoutRgdu : 0;
+    const flclR = flclE - flclEWithoutRgdu;
+
+    return {
+        flclE,
+        flclB,
+        flclR
+    };
+}
+
+function renderFlclIndexCards(data, lang) {
+    const t = getText(lang);
+    const row = findClosestSmicRow(data, 1.0);
+    const indicators = computeFlclIndicators(row);
+
+    const eValue = document.getElementById("flcl-e-value-" + lang);
+    const bValue = document.getElementById("flcl-b-value-" + lang);
+    const rValue = document.getElementById("flcl-r-value-" + lang);
+
+    const eCaption = document.getElementById("flcl-e-caption-" + lang);
+    const bCaption = document.getElementById("flcl-b-caption-" + lang);
+    const rCaption = document.getElementById("flcl-r-caption-" + lang);
+
+    if (eValue) {
+        eValue.textContent = indicators.flclE.toFixed(1);
+    }
+
+    if (bValue) {
+        bValue.textContent = indicators.flclB.toFixed(1);
+    }
+
+    if (rValue) {
+        rValue.textContent = "+" + indicators.flclR.toFixed(1) + " pts";
+    }
+
+    if (eCaption) {
+        eCaption.textContent = indicators.flclE.toFixed(1) + " € " + t.flcl_e_desc;
+    }
+
+    if (bCaption) {
+        bCaption.textContent = indicators.flclB.toFixed(1) + " % " + t.flcl_b_desc;
+    }
+
+    if (rCaption) {
+        rCaption.textContent = t.flcl_r_desc;
+    }
+}
+
+function renderFlclEfficiencyChart(data, lang) {
+    const t = getText(lang);
+
+    const traces = [
+        {
+            x: data.map(d => getFlclSmicMultiple(d)),
+            y: data.map(d => {
+                const net = num(d.net_monthly_eur);
+                const employerCost = num(d.employer_cost_monthly_eur);
+
+                return employerCost > 0 ? 100 * net / employerCost : 0;
+            }),
+            mode: "lines",
+            name: t.flcl_e,
+            line: {
+                color: COLORS.blue,
+                width: 3
+            },
+            customdata: data.map(d => [
+                num(d.net_monthly_eur),
+                num(d.employer_cost_monthly_eur),
+                num(d.rgdu_monthly_eur)
+            ]),
+            hovertemplate:
+                "<b>%{x:.2f}× SMIC</b><br>" +
+                `${t.flcl_e}: %{y:.1f}<br>` +
+                `${t.net_wage}: %{customdata[0]:,.0f} €<br>` +
+                `${t.employer_cost}: %{customdata[1]:,.0f} €<br>` +
+                `${t.rgdu}: %{customdata[2]:,.0f} €` +
+                "<extra></extra>",
+            type: "scatter"
+        }
+    ];
+
+    const rgduZone = getRgduZoneFromData(data);
+    const layout = addRgduZone(
+        baseLayout(lang, t.flcl_e),
+        lang,
+        rgduZone.x0,
+        rgduZone.x1
+    );
+
+    layout.height = 500;
+    layout.yaxis.ticksuffix = "";
+    layout.margin.b = 95;
+
+    plot("chart-flcl-e-" + lang, traces, layout);
+}
+
+function renderFlclIndex(data, lang) {
+    renderFlclIndexCards(data, lang);
+    renderFlclEfficiencyChart(data, lang);
+    renderFlclRgduEffectChart(data, lang);
+    renderFlclMarginalChart(data, lang);
+    renderFlclProgressivityChart(data, lang);
+    renderFlclMarginalDestinationChart(data, lang);
+    const marginalRows = [];
+
+    for (let i = 1; i < data.length; i++) {
+        const deltaNet = num(data[i].net_monthly_eur) - num(data[i - 1].net_monthly_eur);
+        const deltaCost = num(data[i].employer_cost_monthly_eur) - num(data[i - 1].employer_cost_monthly_eur);
+        const deltaSmic = getFlclSmicMultiple(data[i]) - getFlclSmicMultiple(data[i - 1]);
+
+        if (deltaCost !== 0 && deltaSmic !== 0) {
+            const currentIndicators = computeFlclIndicators(data[i]);
+            const previousIndicators = computeFlclIndicators(data[i - 1]);
+
+            marginalRows.push({
+                smic: getFlclSmicMultiple(data[i]),
+                transmission: deltaNet / deltaCost,
+                captation: 1 - deltaNet / deltaCost,
+                progressivity: (currentIndicators.flclE - previousIndicators.flclE) / deltaSmic
+            });
+        }
+    }
+
+    const rowAtOne = findClosestSmicRow(marginalRows, 1.0);
+    const smic1 = computeFlclIndicators(findClosestSmicRow(data, 1.0));
+    const smic3 = computeFlclIndicators(findClosestSmicRow(data, 3.0));
+    const support = smic1.flclE - smic3.flclE;
+
+    const transmissionValue = document.getElementById("flcl-transmission-value-" + lang);
+    const captationValue = document.getElementById("flcl-captation-value-" + lang);
+    const progressivityValue = document.getElementById("flcl-progressivity-value-" + lang);
+    const supportValue = document.getElementById("flcl-support-value-" + lang);
+
+    const transmissionCaption = document.getElementById("flcl-transmission-caption-" + lang);
+    const captationCaption = document.getElementById("flcl-captation-caption-" + lang);
+    const progressivityCaption = document.getElementById("flcl-progressivity-caption-" + lang);
+    const supportCaption = document.getElementById("flcl-support-caption-" + lang);
+
+    if (transmissionValue) {
+        transmissionValue.textContent = (rowAtOne.transmission * 100).toFixed(1) + "%";
+    }
+
+    if (captationValue) {
+        captationValue.textContent = (rowAtOne.captation * 100).toFixed(1) + "%";
+    }
+
+    if (progressivityValue) {
+        progressivityValue.textContent = rowAtOne.progressivity.toFixed(1) + " pts";
+    }
+
+    if (supportValue) {
+        supportValue.textContent = support.toFixed(1) + " pts";
+    }
+
+    if (transmissionCaption) {
+        transmissionCaption.textContent = lang === "fr"
+            ? "Part d’un euro supplémentaire de coût employeur allant au salarié net."
+            : "Share of one additional employer-cost euro reaching net wage.";
+    }
+
+    if (captationCaption) {
+        captationCaption.textContent = lang === "fr"
+            ? "Part d’un euro supplémentaire captée par le système socio-fiscal."
+            : "Share of one additional euro captured by the socio-fiscal system.";
+    }
+
+    if (progressivityCaption) {
+        progressivityCaption.textContent = lang === "fr"
+            ? "Variation locale de FLCL-E autour de 1 SMIC."
+            : "Local change in FLCL-E around 1 SMIC.";
+    }
+
+    if (supportCaption) {
+        supportCaption.textContent = lang === "fr"
+            ? "Écart FLCL-E entre 1 SMIC et 3 SMIC."
+            : "FLCL-E gap between 1 SMIC and 3 SMIC.";
+    }
+}
+
+function renderFlclRgduEffectChart(data, lang) {
+    const traces = [
+        {
+            x: data.map(d => getFlclSmicMultiple(d)),
+            y: data.map(d => {
+                const smic = getFlclSmicMultiple(d);
+
+                if (smic < 1.0) {
+                    return 0;
+                }
+
+                const net = num(d.net_monthly_eur);
+                const employerCost = num(d.employer_cost_monthly_eur);
+                const rgdu = num(d.rgdu_monthly_eur);
+
+                if (employerCost <= 0 || employerCost + rgdu <= 0) {
+                    return 0;
+                }
+
+                const flclE = 100 * net / employerCost;
+                const flclEWithoutRgdu = 100 * net / (employerCost + rgdu);
+
+                return flclE - flclEWithoutRgdu;
+            }),
+            mode: "lines",
+            line: {
+                color: COLORS.red,
+                width: 3
+            },
+            name: "FLCL-R",
+            type: "scatter"
+        }
+    ];
+
+    const rgduZone = getRgduZoneFromData(data);
+    const layout = addRgduZone(
+        baseLayout(
+            lang,
+            lang === "fr"
+                ? "Gain d’efficacité, points"
+                : "Efficiency gain, points"
+        ),
+        lang,
+        rgduZone.x0,
+        rgduZone.x1
+    );
+
+    layout.height = 450;
+    layout.margin.b = 95;
+
+    plot("chart-flcl-r-" + lang, traces, layout);
+}
+
+function renderFlclMarginalChart(data, lang) {
+
+    const x = [];
+    const transmission = [];
+    const captation = [];
+
+    for (let i = 1; i < data.length; i++) {
+
+        const deltaNet =
+            num(data[i].net_monthly_eur)
+            - num(data[i - 1].net_monthly_eur);
+
+        const deltaCost =
+            num(data[i].employer_cost_monthly_eur)
+            - num(data[i - 1].employer_cost_monthly_eur);
+
+        if (deltaCost === 0) {
+            continue;
+        }
+
+        const t = deltaNet / deltaCost;
+
+        x.push(getFlclSmicMultiple(data[i]));
+        transmission.push(t * 100);
+        captation.push((1 - t) * 100);
+    }
+
+    const traces = [
+        {
+            x: x,
+            y: transmission,
+            mode: "lines",
+            name: lang === "fr"
+                ? "Transmission"
+                : "Transmission",
+            line: {
+                color: COLORS.green,
+                width: 3
+            }
+        },
+        {
+            x: x,
+            y: captation,
+            mode: "lines",
+            name: lang === "fr"
+                ? "Captation"
+                : "Capture",
+            line: {
+                color: COLORS.orange,
+                width: 3
+            }
+        }
+    ];
+
+    const layout = baseLayout(
+        lang,
+        "%"
+    );
+
+    layout.height = 450;
+    layout.margin.b = 95;
+
+    plot("chart-flcl-marginal-" + lang, traces, layout);
+}
+
+function renderFlclProgressivityChart(data, lang) {
+    const x = [];
+    const progressivity = [];
+
+    for (let i = 1; i < data.length; i++) {
+        const current = computeFlclIndicators(data[i]);
+        const previous = computeFlclIndicators(data[i - 1]);
+
+        const deltaSmic =
+    	    getFlclSmicMultiple(data[i])
+    	    - getFlclSmicMultiple(data[i - 1]);
+
+        if (deltaSmic === 0) {
+            continue;
+        }
+
+        x.push(getFlclSmicMultiple(data[i]));
+        progressivity.push(
+            (current.flclE - previous.flclE) / deltaSmic
+        );
+    }
+
+    const traces = [
+        {
+            x: x,
+            y: progressivity,
+            mode: "lines",
+            name: lang === "fr"
+                ? "Progressivité implicite"
+                : "Implicit progressivity",
+            line: {
+                color: COLORS.purple,
+                width: 3
+            },
+            hovertemplate:
+                "<b>%{x:.2f}× SMIC</b><br>" +
+                (lang === "fr"
+                    ? "Variation de FLCL-E"
+                    : "Change in FLCL-E") +
+                ": %{y:.2f} points / SMIC" +
+                "<extra></extra>",
+            type: "scatter"
+        }
+    ];
+
+    const rgduZone = getRgduZoneFromData(data);
+    const layout = addRgduZone(
+        baseLayout(
+            lang,
+            lang === "fr"
+                ? "Points de FLCL-E par SMIC"
+                : "FLCL-E points per SMIC"
+        ),
+        lang,
+        rgduZone.x0,
+        rgduZone.x1
+    );
+
+    layout.height = 450;
+    layout.margin.b = 95;
+
+    layout.shapes = layout.shapes || [];
+    layout.shapes.push({
+        type: "line",
+        xref: "paper",
+        yref: "y",
+        x0: 0,
+        x1: 1,
+        y0: 0,
+        y1: 0,
+        line: {
+            color: COLORS.gray,
+            dash: "dash",
+            width: 1.5
+        }
+    });
+
+    plot("chart-flcl-progressivity-" + lang, traces, layout);
+}
+
+function renderFlclMarginalDestinationChart(data, lang) {
+    const x = [];
+    const netShare = [];
+    const employeeShare = [];
+    const employerShare = [];
+
+    for (let i = 1; i < data.length; i++) {
+        const deltaCost =
+            num(data[i].employer_cost_monthly_eur)
+            - num(data[i - 1].employer_cost_monthly_eur);
+
+        if (deltaCost === 0) {
+            continue;
+        }
+
+        const deltaNet =
+            num(data[i].net_monthly_eur)
+            - num(data[i - 1].net_monthly_eur);
+
+        const deltaEmployee =
+            num(data[i].employee_contributions_monthly_eur)
+            - num(data[i - 1].employee_contributions_monthly_eur);
+
+        const deltaEmployer =
+            num(data[i].employer_contributions_monthly_eur)
+            - num(data[i - 1].employer_contributions_monthly_eur);
+
+        x.push(getFlclSmicMultiple(data[i]));
+        netShare.push(100 * deltaNet / deltaCost);
+        employeeShare.push(100 * deltaEmployee / deltaCost);
+        employerShare.push(100 * deltaEmployer / deltaCost);
+    }
+
+    const traces = [
+        {
+            x: x,
+            y: netShare,
+            type: "scatter",
+            mode: "lines",
+            stackgroup: "one",
+            name: lang === "fr"
+                ? "Salaire net"
+                : "Net wage",
+            line: {
+                color: COLORS.blue,
+                width: 2
+            }
+        },
+        {
+            x: x,
+            y: employeeShare,
+            type: "scatter",
+            mode: "lines",
+            stackgroup: "one",
+            name: lang === "fr"
+                ? "Cotisations salarié"
+                : "Employee contributions",
+            line: {
+                color: COLORS.orange,
+                width: 2
+            }
+        },
+        {
+            x: x,
+            y: employerShare,
+            type: "scatter",
+            mode: "lines",
+            stackgroup: "one",
+            name: lang === "fr"
+                ? "Cotisations employeur"
+                : "Employer contributions",
+            line: {
+                color: COLORS.green,
+                width: 2
+            }
+        }
+    ];
+
+    const rgduZone = getRgduZoneFromData(data);
+    const layout = addRgduZone(
+        baseLayout(
+            lang,
+            lang === "fr"
+                ? "Destination marginale d’un euro supplémentaire, %"
+                : "Marginal destination of one additional euro, %"
+        ),
+        lang,
+        rgduZone.x0,
+        rgduZone.x1
+    );
+
+    layout.height = 500;
+    layout.margin.b = 115;
+    layout.yaxis.ticksuffix = "%";
+    layout.yaxis.range = [0, 100];
+
+    plot("chart-flcl-100-" + lang, traces, layout);
+}
+
+
 function renderSimulation(lang = getActiveLanguage()) {
     currentLanguage = lang;
 
@@ -1902,7 +2459,7 @@ function renderDataTable(lang = getActiveLanguage()) {
         <tbody>
             ${data.map(row => `
                 <tr>
-                    <td>${num(row.smic_multiple).toFixed(2)}</td>
+                    <td>${getFlclSmicMultiple(row).toFixed(2)}</td>
                     <td>${euro(row.gross_monthly_eur)}</td>
                     <td>${euro(row.net_monthly_eur)}</td>
                     <td>${euro(row.employer_cost_monthly_eur)}</td>
@@ -2478,6 +3035,11 @@ function updateAll(lang = getActiveLanguage()) {
     if (currentTab === "comparisons") {
         renderComparisons(lang);
     }
+
+    if (currentTab === "flcl-index") {
+        renderFlclIndex(getProfileData(lang), lang);
+    }
+
     if (currentTab === "methodology") {
     	renderConsistencyChecks(lang);
     }
