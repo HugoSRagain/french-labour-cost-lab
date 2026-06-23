@@ -47,6 +47,40 @@ def load_parameters() -> dict:
 def cap_base(gross_monthly_eur: float, ceiling_monthly_eur: float) -> float:
     return min(gross_monthly_eur, ceiling_monthly_eur)
 
+def classify_employment_regime(
+    gross_monthly_eur: float,
+    parameters: dict
+) -> dict:
+    regimes = parameters["employment_regimes"]
+
+    minijob_threshold = regimes["minijob"]["monthly_threshold_eur"]
+    midijob_lower = regimes["midijob"]["lower_monthly_threshold_eur"]
+    midijob_upper = regimes["midijob"]["upper_monthly_threshold_eur"]
+
+    if gross_monthly_eur <= minijob_threshold:
+        regime = "minijob"
+        label_fr = "Minijob"
+        label_en = "Minijob"
+    elif midijob_lower <= gross_monthly_eur <= midijob_upper:
+        regime = "midijob"
+        label_fr = "Midijob / Übergangsbereich"
+        label_en = "Midijob / transitional employment range"
+    else:
+        regime = "standard_job"
+        label_fr = "Emploi standard"
+        label_en = "Standard employment"
+
+    return {
+        "employment_regime": regime,
+        "employment_regime_label_fr": label_fr,
+        "employment_regime_label_en": label_en,
+        "is_minijob": regime == "minijob",
+        "is_midijob": regime == "midijob",
+        "is_standard_job": regime == "standard_job",
+        "minijob_threshold_monthly_eur": minijob_threshold,
+        "midijob_lower_threshold_monthly_eur": midijob_lower,
+        "midijob_upper_threshold_monthly_eur": midijob_upper,
+    }
 
 def compute_row(
     smic_multiple: float,
@@ -58,6 +92,11 @@ def compute_row(
 
     monthly_minimum_wage = minimum_wage_hourly * monthly_hours
     gross = monthly_minimum_wage * smic_multiple
+
+    employment_regime = classify_employment_regime(
+        gross_monthly_eur=gross,
+        parameters=parameters
+    )
 
     ceilings = parameters["contribution_ceilings"]
     rates = parameters["rates"]
@@ -145,6 +184,16 @@ def compute_row(
         "monthly_reference_hours": monthly_hours,
         "monthly_minimum_wage_eur": monthly_minimum_wage,
 
+        "employment_regime": employment_regime["employment_regime"],
+        "employment_regime_label_fr": employment_regime["employment_regime_label_fr"],
+        "employment_regime_label_en": employment_regime["employment_regime_label_en"],
+        "is_minijob": employment_regime["is_minijob"],
+        "is_midijob": employment_regime["is_midijob"],
+        "is_standard_job": employment_regime["is_standard_job"],
+        "minijob_threshold_monthly_eur": employment_regime["minijob_threshold_monthly_eur"],
+        "midijob_lower_threshold_monthly_eur": employment_regime["midijob_lower_threshold_monthly_eur"],
+        "midijob_upper_threshold_monthly_eur": employment_regime["midijob_upper_threshold_monthly_eur"],
+
         "smic_multiple": round(smic_multiple, 2),
         "gross_monthly_eur": gross,
         "net_before_income_tax_monthly_eur": net_before_income_tax,
@@ -193,7 +242,7 @@ def compute_row(
 
 def build_dataset(parameters: dict) -> pd.DataFrame:
     wage_grid = np.round(
-        np.arange(0.80, 6.00 + 0.001, 0.01),
+        np.arange(0.20, 6.00 + 0.001, 0.01),
         2
     )
 
@@ -216,7 +265,7 @@ def print_quality_checks(dataset: pd.DataFrame) -> None:
     print()
     print("Quality checks")
 
-    expected_rows = 521 * dataset["profile_id"].nunique()
+    expected_rows = 581 * dataset["profile_id"].nunique()
     actual_rows = len(dataset)
 
     print(f"Profiles: {dataset['profile_id'].nunique()}")
@@ -317,7 +366,9 @@ def export_validation_report(dataset: pd.DataFrame) -> None:
 
     profiles = dataset["profile_id"].nunique()
     rows = len(dataset)
-    expected_rows = 521 * profiles
+
+    grid_points = dataset["smic_multiple"].nunique()
+    expected_rows = grid_points * profiles
 
     net_identity_error = (
         dataset["gross_monthly_eur"]
@@ -339,6 +390,17 @@ def export_validation_report(dataset: pd.DataFrame) -> None:
 
     health_ceiling = dataset["health_care_base_monthly_eur"].max()
     pension_ceiling = dataset["pension_unemployment_base_monthly_eur"].max()
+
+    regime_counts = (
+        dataset
+        .groupby("employment_regime")
+        .size()
+        .to_dict()
+    )
+
+    minijob_rows = regime_counts.get("minijob", 0)
+    midijob_rows = regime_counts.get("midijob", 0)
+    standard_rows = regime_counts.get("standard_job", 0)
     
     reference_row = dataset[
         dataset["smic_multiple"] == 1.00
@@ -371,6 +433,12 @@ Dataset
 Profiles: {profiles}
 Rows: {rows}
 Expected rows: {expected_rows}
+
+Employment regimes
+------------------
+Minijob rows: {minijob_rows}
+Midijob rows: {midijob_rows}
+Standard job rows: {standard_rows}
 
 Accounting identities
 ---------------------
@@ -406,8 +474,10 @@ Interpretation
 --------------
 The German module is a rule-based simulation built from documented social security parameters.
 The net wage is computed before personal income tax.
-Income tax, mini-jobs, midi-jobs, private health insurance, accident insurance,
-Kirchensteuer and Solidaritätszuschlag are excluded from this prototype.
+Income tax, private health insurance, accident insurance, Kirchensteuer and
+Solidaritätszuschlag are excluded from this prototype.
+Mini-jobs and midi-jobs are identified in the dataset, but their specific
+contribution rules are not yet applied.
 """
 
     VALIDATION_SUMMARY_PATH.write_text(

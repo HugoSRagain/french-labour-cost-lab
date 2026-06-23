@@ -16,6 +16,25 @@
         "note": "Analytical full-time convention: 40 hours per week × 52 weeks / 12 months."
     },
 
+    "employment_regimes": {
+    	"minijob": {
+        	"monthly_threshold_eur": 603.00,
+        	"annual_threshold_eur": 7236.00,
+        	"source": "Minijob-Zentrale / Deutsche Rentenversicherung",
+        	"note": "Monthly earnings threshold for marginal employment in 2026."
+    	},
+    	"midijob": {
+        	"lower_monthly_threshold_eur": 603.01,
+        	"upper_monthly_threshold_eur": 2000.00,
+        	"source": "BMAS",
+        	"note": "German transitional employment range, also known as Übergangsbereich."
+    	},
+    	"standard_job": {
+        	"lower_monthly_threshold_eur": 2000.01,
+        	"note": "Regular employment regime above the upper Midijob threshold."
+    	}
+    },
+
     "contribution_ceilings": {
         "health_and_care_monthly_eur": 5812.50,
         "health_and_care_annual_eur": 69750.00,
