@@ -16,6 +16,13 @@ const GERMANY_THRESHOLDS = {
     pensionUnemployment: 3.5072
 };
 
+const GERMANY_EMPLOYMENT_ZONES = {
+    minijobUpper: 0.2503,
+    midijobUpper: 0.8301,
+    chartMin: 0.20,
+    chartMax: 6.00
+};
+
 function deNum(value) {
     if (value === null || value === undefined || value === "") {
         return 0;
@@ -60,6 +67,18 @@ function getGermanyWaterfallMultiple() {
     }
 
     return deNum(select.value);
+}
+
+function getGermanyVisibleEmploymentZones() {
+    const minijob = document.getElementById("germany-zone-minijob");
+    const midijob = document.getElementById("germany-zone-midijob");
+    const standard = document.getElementById("germany-zone-standard");
+
+    return {
+        minijob: minijob ? minijob.checked : true,
+        midijob: midijob ? midijob.checked : true,
+        standard: standard ? standard.checked : true
+    };
 }
 
 function getGermanyProfileData() {
@@ -111,14 +130,14 @@ function germanyBaseLayout(yTitle) {
                 text: "Multiple du salaire minimum allemand",
                 standoff: 14
             },
-            range: [0.95, 6.05],
+            range: [0.15, 6.05],
             showgrid: false,
             zeroline: false,
             linecolor: "#cbd5e1",
             tickcolor: "#cbd5e1",
             ticks: "outside",
-            tickvals: [1, 2, 3, 4, 5, 6],
-            tickformat: ".0f"
+            tickvals: [0.2, 0.5, 1, 2, 3, 4, 5, 6],
+            ticktext: ["0,2", "0,5", "1", "2", "3", "4", "5", "6"]
         },
         yaxis: {
             title: {
@@ -136,7 +155,15 @@ function germanyBaseLayout(yTitle) {
 }
 
 function addGermanyCeilingLines(layout) {
-    layout.shapes = [
+    if (!layout.shapes) {
+        layout.shapes = [];
+    }
+
+    if (!layout.annotations) {
+        layout.annotations = [];
+    }
+
+    layout.shapes = layout.shapes.concat([
         {
             type: "line",
             x0: GERMANY_THRESHOLDS.healthCare,
@@ -165,49 +192,78 @@ function addGermanyCeilingLines(layout) {
                 dash: "dot"
             }
         }
-    ];
+    ]);
 
-    layout.annotations = [
-        {
-            x: GERMANY_THRESHOLDS.healthCare,
-            y: 1,
-            xref: "x",
-            yref: "paper",
-            text: "Plafond santé / dépendance",
-            showarrow: false,
-            yshift: 18,
-            xshift: -18,
-            textangle: 0,
-            font: {
-                size: 11,
-                color: GERMANY_COLORS.gray
-            },
-            bgcolor: "rgba(255, 255, 255, 0.86)",
-            bordercolor: "rgba(203, 213, 225, 0.8)",
-            borderpad: 4
-        },
-        {
-            x: GERMANY_THRESHOLDS.pensionUnemployment,
-            y: 1,
-            xref: "x",
-            yref: "paper",
-            text: "Plafond retraite / chômage",
-            showarrow: false,
-            yshift: 42,
-            xshift: 18,
-            textangle: 0,
-            font: {
-                size: 11,
-                color: GERMANY_COLORS.gray
-            },
-            bgcolor: "rgba(255, 255, 255, 0.86)",
-            bordercolor: "rgba(203, 213, 225, 0.8)",
-            borderpad: 4
-        }
-    ];
+    layout.annotations = layout.annotations.concat([]);
 
     return layout;
 }
+
+function addGermanyEmploymentZones(layout) {
+    const visibleZones = getGermanyVisibleEmploymentZones();
+
+    if (!layout.shapes) {
+        layout.shapes = [];
+    }
+
+    const shapes = [];
+
+    if (visibleZones.minijob) {
+        shapes.push({
+            type: "rect",
+            x0: GERMANY_EMPLOYMENT_ZONES.chartMin,
+            x1: GERMANY_EMPLOYMENT_ZONES.minijobUpper,
+            y0: 0,
+            y1: 1,
+            xref: "x",
+            yref: "paper",
+            fillcolor: "rgba(59, 130, 246, 0.10)",
+            line: {
+                width: 0
+            },
+            layer: "below"
+        });
+    }
+
+    if (visibleZones.midijob) {
+        shapes.push({
+            type: "rect",
+            x0: GERMANY_EMPLOYMENT_ZONES.minijobUpper,
+            x1: GERMANY_EMPLOYMENT_ZONES.midijobUpper,
+            y0: 0,
+            y1: 1,
+            xref: "x",
+            yref: "paper",
+            fillcolor: "rgba(249, 115, 22, 0.10)",
+            line: {
+                width: 0
+            },
+            layer: "below"
+        });
+    }
+
+    if (visibleZones.standard) {
+        shapes.push({
+            type: "rect",
+            x0: GERMANY_EMPLOYMENT_ZONES.midijobUpper,
+            x1: GERMANY_EMPLOYMENT_ZONES.chartMax,
+            y0: 0,
+            y1: 1,
+            xref: "x",
+            yref: "paper",
+            fillcolor: "rgba(34, 197, 94, 0.06)",
+            line: {
+                width: 0
+            },
+            layer: "below"
+        });
+    }
+
+    layout.shapes = layout.shapes.concat(shapes);
+
+    return layout;
+}
+
 
 function germanyPlot(targetId, traces, layout) {
     const target = document.getElementById(targetId);
@@ -305,14 +361,15 @@ function renderGermanyCostChart() {
         }
     ];
 
-    const layout = addGermanyCeilingLines(
-    germanyBaseLayout("Montant mensuel, euros")
-    );
+    let layout = germanyBaseLayout("Montant mensuel, euros");
+    layout = addGermanyEmploymentZones(layout);
+    layout = addGermanyCeilingLines(layout);
 
     layout.yaxis.ticksuffix = " €";
 
     germanyPlot("chart-germany-cost", traces, layout);
 }
+
 
 function renderGermanyContributionRateChart() {
     const data = getGermanyProfileData();
@@ -342,9 +399,9 @@ function renderGermanyContributionRateChart() {
         }
     ];
 
-    const layout = addGermanyCeilingLines(
-    germanyBaseLayout("Taux effectif")
-    );
+    let layout = germanyBaseLayout("Taux effectif");
+    layout = addGermanyEmploymentZones(layout);
+    layout = addGermanyCeilingLines(layout);
 
     layout.yaxis.ticksuffix = "%";
 
@@ -370,13 +427,136 @@ function renderGermanyWedgeChart() {
         }
     ];
 
-    const layout = addGermanyCeilingLines(
-    germanyBaseLayout("Coin social / coût employeur")
-    );
+    let layout = germanyBaseLayout("Coin social / coût employeur");
+    layout = addGermanyEmploymentZones(layout);
+    layout = addGermanyCeilingLines(layout);
 
     layout.yaxis.ticksuffix = "%";
 
     germanyPlot("chart-germany-wedge", traces, layout);
+}
+
+function renderGermanyFiscalReturnChart() {
+    const profileId = getGermanySelectedProfile();
+    const profileData = getGermanyProfileData(profileId);
+
+    if (!profileData.length) {
+        return;
+    }
+
+    const marginalData = [];
+
+    for (let index = 1; index < profileData.length; index += 1) {
+        const previous = profileData[index - 1];
+        const current = profileData[index];
+
+        const deltaGross = (
+            deNum(current.gross_monthly_eur)
+            - deNum(previous.gross_monthly_eur)
+        );
+
+        if (deltaGross <= 0) {
+            continue;
+        }
+
+        const deltaNetBeforeTax = (
+            deNum(current.net_before_income_tax_monthly_eur)
+            - deNum(previous.net_before_income_tax_monthly_eur)
+        );
+
+        const deltaNetAfterTax = (
+            deNum(current.net_after_income_tax_monthly_eur)
+            - deNum(previous.net_after_income_tax_monthly_eur)
+        );
+
+        const marginalNetBeforeTaxShare = (
+            deltaNetBeforeTax
+            / deltaGross
+        );
+
+        const marginalNetAfterTaxShare = (
+            deltaNetAfterTax
+            / deltaGross
+        );
+
+        marginalData.push({
+            smic_multiple: deNum(current.smic_multiple),
+            marginal_net_before_tax_share: marginalNetBeforeTaxShare,
+            marginal_net_after_tax_share: marginalNetAfterTaxShare,
+            marginal_social_wedge: 1 - marginalNetBeforeTaxShare,
+            marginal_total_tax_wedge: 1 - marginalNetAfterTaxShare
+        });
+    }
+
+    const data = marginalData.filter(row => (
+        Number.isFinite(row.marginal_net_before_tax_share)
+        && Number.isFinite(row.marginal_net_after_tax_share)
+    ));
+
+    if (!data.length) {
+        return;
+    }
+
+    const traces = [
+        {
+            x: data.map(row => row.smic_multiple),
+            y: data.map(row => row.marginal_net_before_tax_share * 100),
+            type: "scatter",
+            mode: "lines",
+            name: "Avant IR",
+            line: {
+                width: 3
+            }
+        },
+        {
+            x: data.map(row => row.smic_multiple),
+            y: data.map(row => row.marginal_net_after_tax_share * 100),
+            type: "scatter",
+            mode: "lines",
+            name: "Après Lohnsteuer + Soli",
+            line: {
+                width: 3
+            }
+        },
+        {
+            x: data.map(row => row.smic_multiple),
+            y: data.map(row => row.marginal_social_wedge * 100),
+            type: "scatter",
+            mode: "lines",
+            name: "Effet marginal social",
+            line: {
+                width: 2,
+                dash: "dot"
+            }
+        },
+        {
+            x: data.map(row => row.smic_multiple),
+            y: data.map(row => row.marginal_total_tax_wedge * 100),
+            type: "scatter",
+            mode: "lines",
+            name: "Prélèvement marginal total estimé",
+            line: {
+                width: 2,
+                dash: "dash"
+            }
+        }
+    ];
+
+    let layout = germanyBaseLayout(
+        "Part d’un euro supplémentaire de salaire brut"
+    );
+
+    layout = addGermanyEmploymentZones(layout);
+    layout = addGermanyCeilingLines(layout);
+
+    layout.yaxis.ticksuffix = "%";
+    layout.yaxis.range = [-10, 110];
+
+    germanyPlot(
+        "chart-germany-fiscal-return",
+        traces,
+        layout
+    );
 }
 
 function renderGermanyDecompositionChart() {
@@ -635,15 +815,45 @@ function renderGermanyContributionBreakdownChart() {
         }
     ];
 
-    const layout = germanyBaseLayout("Montant mensuel à 2 salaires minimums, euros");
-    layout.height = 480;
+    const layout = germanyBaseLayout("Montant mensuel, euros");
+
+    layout.height = 430;
     layout.barmode = "group";
-    layout.bargap = 0.34;
-    layout.bargroupgap = 0.12;
-    layout.yaxis.ticksuffix = " €";
-    layout.xaxis.title = "";
-    layout.xaxis.range = null;
-    layout.margin.b = 88;
+    layout.showlegend = true;
+
+    layout.xaxis = {
+        title: {
+            text: ""
+        },
+        type: "category",
+        showgrid: false,
+        zeroline: false,
+        linecolor: "#cbd5e1",
+        tickcolor: "#cbd5e1",
+        ticks: "outside",
+        automargin: true
+    };
+
+    layout.yaxis = {
+        title: {
+            text: "Montant mensuel, euros",
+            standoff: 16
+        },
+        showgrid: true,
+        gridcolor: "#e5e7eb",
+        zeroline: false,
+        linecolor: "#cbd5e1",
+        tickcolor: "#cbd5e1",
+        ticks: "outside",
+        ticksuffix: " €"
+    };
+
+    layout.margin = {
+        l: 76,
+        r: 42,
+        t: 38,
+        b: 82
+    };
 
     germanyPlot("chart-germany-breakdown", traces, layout);
 }
@@ -703,6 +913,7 @@ function renderGermanyDataTable() {
 
         const cells = [
             deNum(row.smic_multiple).toFixed(2).replace(".", ","),
+            row.employment_regime_label_fr,
             deEuro(row.gross_monthly_eur),
             deEuro(row.net_before_income_tax_monthly_eur),
             deEuro(row.employer_cost_monthly_eur),
@@ -729,6 +940,7 @@ function renderGermany() {
     renderGermanyCostChart();
     renderGermanyContributionRateChart();
     renderGermanyWedgeChart();
+    renderGermanyFiscalReturnChart();
     renderGermanyDecompositionChart();
     renderGermanyContributionBreakdownChart();
     renderGermanyDataTable();
@@ -777,6 +989,9 @@ function setupGermanyEvents() {
     const profileSelect = document.getElementById("germany-profile-select");
     const waterfallSelect = document.getElementById("germany-waterfall-multiple");
     const dataProfileSelect = document.getElementById("germany-data-profile-select");
+    const minijobZone = document.getElementById("germany-zone-minijob");
+    const midijobZone = document.getElementById("germany-zone-midijob");
+    const standardZone = document.getElementById("germany-zone-standard");
 
     if (profileSelect) {
         profileSelect.addEventListener("change", function() {
@@ -795,6 +1010,17 @@ function setupGermanyEvents() {
             renderGermanyDataTable();
         });
     }
+
+    [minijobZone, midijobZone, standardZone].forEach(zoneCheckbox => {
+        if (zoneCheckbox) {
+            zoneCheckbox.addEventListener("change", function() {
+                renderGermanyCostChart();
+                renderGermanyContributionRateChart();
+                renderGermanyWedgeChart();
+                renderGermanyFiscalReturnChart();
+            });
+        }
+    });
 }
 
 function loadGermanyData() {
@@ -827,6 +1053,7 @@ function loadGermanyData() {
             console.error("Germany CSV loading error:", error);
         }
     });
+
 }
 
 document.addEventListener("DOMContentLoaded", loadGermanyData);

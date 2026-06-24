@@ -4,6 +4,8 @@ import json
 import numpy as np
 import pandas as pd
 
+from pap_2026_lohnsteuer import compute_lohnsteuer_2026
+
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
@@ -80,6 +82,23 @@ def classify_employment_regime(
         "minijob_threshold_monthly_eur": minijob_threshold,
         "midijob_lower_threshold_monthly_eur": midijob_lower,
         "midijob_upper_threshold_monthly_eur": midijob_upper,
+    }
+
+def get_germany_tax_scenario(profile_id: str) -> dict:
+    is_saxony = (
+        "saxony" in profile_id
+        and "outside_saxony" not in profile_id
+    )
+
+    is_childless = "childless" in profile_id
+
+    return {
+        "steuerklasse": 1,
+        "additional_health_rate_percent": 2.9,
+        "saxony": is_saxony,
+        "childless": is_childless,
+        "child_allowances": 0.0,
+        "church_tax": False,
     }
 
 def compute_row(
@@ -169,6 +188,47 @@ def compute_row(
     employer_cost = gross + employer_contributions
     social_wedge = employer_cost - net_before_income_tax
 
+    tax_scenario = get_germany_tax_scenario(
+        profile_id=profile["profile_id"]
+    )
+
+    tax = compute_lohnsteuer_2026(
+        gross_monthly_eur=gross,
+        steuerklasse=tax_scenario["steuerklasse"],
+        additional_health_rate_percent=tax_scenario["additional_health_rate_percent"],
+        saxony=tax_scenario["saxony"],
+        childless=tax_scenario["childless"],
+        child_allowances=tax_scenario["child_allowances"],
+        church_tax=tax_scenario["church_tax"],
+    )
+
+    lohnsteuer_monthly_eur = tax["lohnsteuer_monthly_eur"]
+    solidarity_surcharge_monthly_eur = tax["solidarity_surcharge_monthly_eur"]
+    church_tax_base_monthly_eur = tax["church_tax_base_monthly_eur"]
+
+    net_after_income_tax = (
+        net_before_income_tax
+        - lohnsteuer_monthly_eur
+        - solidarity_surcharge_monthly_eur
+    )
+
+    tax_wedge = (
+        lohnsteuer_monthly_eur
+        + solidarity_surcharge_monthly_eur
+    )
+
+    total_wedge_after_tax = (
+        employer_cost
+        - net_after_income_tax
+    )
+
+    cost_to_net_after_tax_ratio = (
+        employer_cost
+        / net_after_income_tax
+        if net_after_income_tax > 0
+        else np.nan
+    )
+
     return {
         "country": parameters["country"],
         "profile_id": profile["profile_id"],
@@ -198,6 +258,16 @@ def compute_row(
         "gross_monthly_eur": gross,
         "net_before_income_tax_monthly_eur": net_before_income_tax,
         "employer_cost_monthly_eur": employer_cost,
+
+        "steuerklasse": tax_scenario["steuerklasse"],
+        "church_tax": tax_scenario["church_tax"],
+        "lohnsteuer_monthly_eur": lohnsteuer_monthly_eur,
+        "solidarity_surcharge_monthly_eur": solidarity_surcharge_monthly_eur,
+        "church_tax_base_monthly_eur": church_tax_base_monthly_eur,
+        "net_after_income_tax_monthly_eur": net_after_income_tax,
+        "tax_wedge_monthly_eur": tax_wedge,
+        "total_wedge_after_tax_monthly_eur": total_wedge_after_tax,
+        "cost_to_net_after_tax_ratio": cost_to_net_after_tax_ratio,
 
         "employee_contributions_monthly_eur": employee_contributions,
         "employer_contributions_monthly_eur": employer_contributions,
@@ -345,14 +415,20 @@ def export_validation_report(dataset: pd.DataFrame) -> None:
             "smic_multiple",
             "gross_monthly_eur",
             "net_before_income_tax_monthly_eur",
+            "lohnsteuer_monthly_eur",
+            "solidarity_surcharge_monthly_eur",
+            "net_after_income_tax_monthly_eur",
+            "tax_wedge_monthly_eur",
             "employee_contributions_monthly_eur",
             "employer_contributions_monthly_eur",
             "employer_cost_monthly_eur",
             "social_wedge_monthly_eur",
+            "total_wedge_after_tax_monthly_eur",
             "employee_contribution_rate",
             "employer_contribution_rate",
             "social_wedge_rate",
             "cost_to_net_ratio",
+            "cost_to_net_after_tax_ratio",
             "health_care_base_monthly_eur",
             "pension_unemployment_base_monthly_eur",
         ]
@@ -472,12 +548,26 @@ Control points exported to:
 
 Interpretation
 --------------
-The German module is a rule-based simulation built from documented social security parameters.
-The net wage is computed before personal income tax.
-Income tax, private health insurance, accident insurance, Kirchensteuer and
-Solidaritätszuschlag are excluded from this prototype.
-Mini-jobs and midi-jobs are identified in the dataset, but their specific
-contribution rules are not yet applied.
+The German module is a rule-based simulation built from documented social
+security parameters and the German 2026 Programmablaufplan for wage tax.
+
+The dataset reports both:
+- net wage before income tax;
+- net wage after Lohnsteuer and Solidaritätszuschlag.
+
+Fiscal scenario:
+- Steuerklasse I;
+- public health insurance;
+- no Kirchensteuer;
+- no additional income;
+- no exceptional payments.
+
+Current limits:
+- private health insurance is not simulated;
+- accident insurance is not simulated;
+- household taxation and spouse effects are not simulated;
+- Mini-jobs and Midi-jobs are identified in the dataset, but their specific
+  contribution rules are not yet applied.
 """
 
     VALIDATION_SUMMARY_PATH.write_text(

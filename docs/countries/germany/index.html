@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -10,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
     <link rel="stylesheet" href="../../assets/style.css?v=19">
-    <script defer src="./assets/germany_app.js?v=12"></script>
+    <script defer src="./assets/germany_app.js?v=18"></script>
 </head>
 
 <body>
@@ -123,6 +122,14 @@
                         et la structure des cotisations selon le profil institutionnel sélectionné.
                     </p>
 
+                    <div class="method-box" style="margin-top: 14px; margin-bottom: 18px;">
+                        <strong>Lecture des zones.</strong>
+                        Les zones Minijob, Midijob et Emploi standard peuvent être affichées
+                        ou masquées séparément. Elles sont affichées à titre institutionnel :
+                        les régimes Minijob et Midijob sont identifiés dans la grille, mais leurs
+                        règles spécifiques de cotisation ne sont pas encore appliquées dans cette version.
+                    </div>
+
                     <div class="profile-selector profile-selector-grid" style="margin-bottom: 18px;">
                         <div class="selector-field">
                             <label for="germany-profile-select">
@@ -146,6 +153,39 @@
                                     Assurance publique · sans enfant · Saxe
                                 </option>
                             </select>
+                        </div>
+
+                        <div class="selector-field">
+                            <label>
+                                Zones d’emploi affichées
+                            </label>
+
+                            <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; margin-top: 6px;">
+                                <input
+                                    type="checkbox"
+                                    id="germany-zone-minijob"
+                                    checked
+                                >
+                                Minijob
+                            </label>
+
+                            <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; margin-top: 6px;">
+                                <input
+                                    type="checkbox"
+                                    id="germany-zone-midijob"
+                                    checked
+                                >
+                                Midijob / Übergangsbereich
+                            </label>
+
+                            <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; margin-top: 6px;">
+                                <input
+                                    type="checkbox"
+                                    id="germany-zone-standard"
+                                    checked
+                                >
+                                Emploi standard
+                            </label>
                         </div>
                     </div>
 
@@ -175,6 +215,27 @@
                             </p>
                             <div id="chart-germany-wedge" class="plotly-chart"></div>
                         </div>
+
+            <div class="chart-card">
+                <h3>Rendement socio-fiscal d’une hausse de salaire brut</h3>
+
+                <p>
+                    Part d’un euro supplémentaire de salaire brut conservée avant et après
+                    Lohnsteuer et Solidaritätszuschlag. Scénario fiscal : Steuerklasse I,
+                    assurance publique, sans Kirchensteuer.
+                </p>
+
+                <div
+                    id="chart-germany-fiscal-return"
+                    class="chart"
+                    aria-label="Rendement socio-fiscal d'une hausse de salaire brut en Allemagne"
+                ></div>
+
+                <p class="method-note">
+                    Calcul fiscal fondé sur le PAP 2026 allemand. Les résultats portent sur
+                    un salaire mensuel régulier hors revenus exceptionnels.
+                </p>
+            </div>
 
                         <div class="chart-card">
                             <h3>Décomposition des cotisations sociales</h3>
@@ -226,6 +287,7 @@
                                 —
                             </div>
                         </div>
+
                     </div>
                 </section>
             </div>
@@ -298,6 +360,7 @@
                             <thead>
                                 <tr>
                                     <th>Multiple</th>
+                                    <th>Régime d’emploi</th>
                                     <th>Salaire brut (€)</th>
                                     <th>Net avant impôt (€)</th>
                                     <th>Coût employeur (€)</th>
@@ -353,6 +416,13 @@
                         </li>
 
                         <li>
+                            <strong>Minijob et midijob.</strong>
+                            Les zones Minijob et Midijob / Übergangsbereich sont identifiées
+                            dans le jeu de données. Leurs règles spécifiques de cotisation ne sont
+                            pas encore appliquées dans cette version.
+                        </li>
+
+                        <li>
                             <strong>Plafonds.</strong>
                             Les cotisations santé/dépendance et retraite/chômage sont
                             plafonnées selon les valeurs réglementaires 2026.
@@ -374,7 +444,7 @@
                             <strong>Limites.</strong>
                             Les mini-jobs, midi-jobs, l’assurance privée, l’impôt sur le revenu,
                             la Kirchensteuer, le Solidaritätszuschlag, l’assurance accident et
-                            les conventions collectives sont exclus de cette V1.
+                            les conventions collectives sont exclus du calcul spécifique de cette V1.
                         </li>
                     </ul>
                 </section>
@@ -387,4 +457,4 @@
     </div>
 </body>
 </html>
-```
+
